@@ -160,6 +160,19 @@
   background-color: #424242;
 }
 
+/* Custom Theme */
+.chess-board[data-theme='custom'] .board-square.light {
+  background-color: var(--custom-light-square, #ebebd0);
+}
+.chess-board[data-theme='custom'] .board-square.dark {
+  background-color: var(--custom-dark-square, #779556);
+}
+.dark .chess-board[data-theme='custom'] .board-square.light {
+  background-color: var(--custom-light-square, #ebebd0);
+}
+.dark .chess-board[data-theme='custom'] .board-square.dark {
+  background-color: var(--custom-dark-square, #779556);
+}
 
 .chess-piece {
   @apply w-4/5 h-4/5 z-10;
@@ -205,4 +218,20 @@
 }
 .move-history-table .move-san {
     @apply px-2;
+}
+
+input[type="color"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  @apply w-full h-8 p-0 bg-transparent border-none cursor-pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  @apply p-0;
+}
+input[type="color"]::-webkit-color-swatch {
+  @apply rounded-md border border-input;
+}
+input[type="color"]::-moz-color-swatch {
+  @apply rounded-md border border-input;
 }

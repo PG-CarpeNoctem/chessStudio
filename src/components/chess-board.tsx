@@ -3,7 +3,8 @@
 import { ChessPieceDisplay } from './chess-piece';
 import { cn } from '@/lib/utils';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import type { ChessSquare } from '@/lib/types';
+import type { ChessSquare, BoardTheme } from '@/lib/types';
+import React from 'react';
 
 type ChessBoardProps = ReturnType<typeof useChessGame>;
 
@@ -20,12 +21,19 @@ export function ChessBoard({
   boardOrientation,
   pieceSet,
   hint,
+  customBoardColors,
+  customPieceColors,
 }: ChessBoardProps) {
   const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = boardOrientation === 'w' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
 
+  const boardStyle = boardTheme === 'custom' ? {
+    '--custom-light-square': customBoardColors.light,
+    '--custom-dark-square': customBoardColors.dark,
+  } as React.CSSProperties : {};
+
   return (
-    <div className="chess-board" data-theme={boardTheme}>
+    <div className="chess-board" data-theme={boardTheme} style={boardStyle}>
       {ranks.map((rank, i) =>
         files.map((file, j) => {
           const square = `${file}${rank}` as ChessSquare;
@@ -46,7 +54,7 @@ export function ChessBoard({
                 'hint-highlight': hint && (square === hint.from || square === hint.to),
               })}
             >
-              {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} />}
+              {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} boardTheme={boardTheme} customPieceColors={customPieceColors} />}
               {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}
             </div>
           );

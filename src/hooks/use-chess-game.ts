@@ -1,14 +1,12 @@
-
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
-type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal';
 
 const pieceValues: { [key in ChessPiece['type']]: number } = {
   p: 1, n: 3, b: 3, r: 5, q: 9, k: 0,
@@ -52,6 +50,9 @@ export const useChessGame = () => {
   const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
   const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
+  const [customBoardColors, setCustomBoardColors] = useState({ light: '#ebebd0', dark: '#779556' });
+  const [customPieceColors, setCustomPieceColors] = useState({ whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' });
+
 
   const { toast } = useToast();
 
@@ -332,5 +333,6 @@ export const useChessGame = () => {
 
   return {
     board, turn, onSquareClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage,
+    customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors
   };
 };

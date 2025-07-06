@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { ChessPiece as PieceType, PieceSet } from '@/lib/types';
+import type { ChessPiece as PieceType, PieceSet, BoardTheme } from '@/lib/types';
 
 const PIECE_SETS: Record<PieceSet, Record<PieceType['type'], string>> = {
   classic: {
@@ -28,19 +28,37 @@ const PIECE_SETS: Record<PieceSet, Record<PieceType['type'], string>> = {
   },
 };
 
-const PieceSvg = ({ type, color, pieceSet }: { type: PieceType['type']; color: PieceType['color'], pieceSet: PieceSet }) => {
+type CustomPieceColors = {
+    whiteFill: string;
+    whiteStroke: string;
+    blackFill: string;
+    blackStroke: string;
+}
+
+const PieceSvg = ({ type, color, pieceSet, boardTheme, customPieceColors }: { type: PieceType['type']; color: PieceType['color'], pieceSet: PieceSet, boardTheme: BoardTheme, customPieceColors: CustomPieceColors }) => {
     const path = PIECE_SETS[pieceSet]?.[type] || PIECE_SETS['classic'][type];
 
-    const whiteFill = pieceSet === 'classic' ? '#FFFFFF' : '#F8F8F8';
-    const whiteStroke = pieceSet === 'classic' ? '#2F2F2F' : '#464646';
-    const blackFill = pieceSet === 'classic' ? '#3C3C3C' : '#2F2F2F';
-    const blackStroke = '#000000';
+    // Default colors
+    const whiteFillDefault = pieceSet === 'classic' ? '#FFFFFF' : '#F8F8F8';
+    const whiteStrokeDefault = pieceSet === 'classic' ? '#2F2F2F' : '#464646';
+    const blackFillDefault = pieceSet === 'classic' ? '#3C3C3C' : '#2F2F2F';
+    const blackStrokeDefault = '#000000';
+
+    let fill, stroke;
+
+    if (boardTheme === 'custom') {
+        fill = color === 'w' ? customPieceColors.whiteFill : customPieceColors.blackFill;
+        stroke = color === 'w' ? customPieceColors.whiteStroke : customPieceColors.blackStroke;
+    } else {
+        fill = color === 'b' ? blackFillDefault : whiteFillDefault;
+        stroke = color === 'b' ? blackStrokeDefault : whiteStrokeDefault;
+    }
 
     return (
         <svg viewBox="0 0 45 45" className="w-full h-full">
             <g
-            fill={color === 'b' ? blackFill : whiteFill}
-            stroke={color === 'b' ? blackStroke : whiteStroke}
+            fill={fill}
+            stroke={stroke}
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -58,13 +76,15 @@ const PieceSvg = ({ type, color, pieceSet }: { type: PieceType['type']; color: P
 interface PieceProps {
   piece: PieceType;
   pieceSet: PieceSet;
+  boardTheme: BoardTheme;
+  customPieceColors: CustomPieceColors;
   className?: string;
 }
 
-export function ChessPieceDisplay({ piece, pieceSet, className }: PieceProps) {
+export function ChessPieceDisplay({ piece, pieceSet, boardTheme, customPieceColors, className }: PieceProps) {
   return (
     <div className={cn('chess-piece', className)}>
-      <PieceSvg type={piece.type} color={piece.color} pieceSet={pieceSet} />
+      <PieceSvg type={piece.type} color={piece.color} pieceSet={pieceSet} boardTheme={boardTheme} customPieceColors={customPieceColors} />
     </div>
   );
 }

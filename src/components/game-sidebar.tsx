@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -20,14 +19,15 @@ import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Clock, Puzzle, Pencil } from 'lucide-react';
+import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
-import type { PieceSet, TimeControl } from '@/lib/types';
+import type { PieceSet, TimeControl, BoardTheme } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
+import { Separator } from './ui/separator';
 
 type GameSidebarProps = ReturnType<typeof useChessGame> & {
     className?: string;
@@ -55,6 +55,10 @@ export function GameSidebar({
   timeControl,
   setTimeControl,
   className,
+  customBoardColors,
+  setCustomBoardColors,
+  customPieceColors,
+  setCustomPieceColors,
 }: GameSidebarProps) {
   const { toast } = useToast();
   const [isCustomTimeDialogOpen, setIsCustomTimeDialogOpen] = useState(false);
@@ -210,22 +214,8 @@ export function GameSidebar({
                             <p className="text-xs text-muted-foreground pt-1">Current AI Skill: {skillLevel}</p>
                             </div>
                         )}
-                        <div className="space-y-1">
-                            <Label htmlFor="theme" className="text-xs">Board Theme</Label>
-                            <Select onValueChange={(value) => setBoardTheme(value as any)} defaultValue={boardTheme}>
-                                <SelectTrigger id="theme" className="h-9">
-                                    <SelectValue placeholder="Select theme" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="classic">Classic</SelectItem>
-                                    <SelectItem value="cyan">Cyan</SelectItem>
-                                    <SelectItem value="ocean">Ocean</SelectItem>
-                                    <SelectItem value="forest">Forest</SelectItem>
-                                    <SelectItem value="charcoal">Charcoal</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-1">
+                        <Separator />
+                         <div className="space-y-1">
                             <Label htmlFor="piece-set" className="text-xs">Piece Set</Label>
                             <Select onValueChange={(value) => setPieceSet(value as PieceSet)} defaultValue={pieceSet}>
                             <SelectTrigger id="piece-set" className="h-9">
@@ -238,6 +228,50 @@ export function GameSidebar({
                             </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="theme" className="text-xs">Board Theme</Label>
+                            <Select onValueChange={(value) => setBoardTheme(value as BoardTheme)} defaultValue={boardTheme}>
+                                <SelectTrigger id="theme" className="h-9">
+                                    <SelectValue placeholder="Select theme" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="classic">Classic</SelectItem>
+                                    <SelectItem value="cyan">Cyan</SelectItem>
+                                    <SelectItem value="ocean">Ocean</SelectItem>
+                                    <SelectItem value="forest">Forest</SelectItem>
+                                    <SelectItem value="charcoal">Charcoal</SelectItem>
+                                    <SelectItem value="custom">Custom</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {boardTheme === 'custom' && (
+                            <div className="space-y-3 rounded-md border border-sidebar-border p-3">
+                                <Label className="text-sm font-medium">Board Colors</Label>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                                    <Label htmlFor="light-squares" className="text-xs">Light Squares</Label>
+                                    <Label htmlFor="dark-squares" className="text-xs">Dark Squares</Label>
+                                    <Input id="light-squares" type="color" value={customBoardColors.light} onChange={e => setCustomBoardColors(c => ({...c, light: e.target.value}))} />
+                                    <Input id="dark-squares" type="color" value={customBoardColors.dark} onChange={e => setCustomBoardColors(c => ({...c, dark: e.target.value}))} />
+                                </div>
+                                 <Separator />
+                                <Label className="text-sm font-medium">Piece Colors</Label>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                                    <Label htmlFor="white-fill" className="text-xs">White Fill</Label>
+                                    <Label htmlFor="black-fill" className="text-xs">Black Fill</Label>
+                                    <Input id="white-fill" type="color" value={customPieceColors.whiteFill} onChange={e => setCustomPieceColors(c => ({...c, whiteFill: e.target.value}))} />
+                                    <Input id="black-fill" type="color" value={customPieceColors.blackFill} onChange={e => setCustomPieceColors(c => ({...c, blackFill: e.target.value}))} />
+
+                                    <Label htmlFor="white-stroke" className="text-xs">White Stroke</Label>
+                                    <Label htmlFor="black-stroke" className="text-xs">Black Stroke</Label>
+                                    <Input id="white-stroke" type="color" value={customPieceColors.whiteStroke} onChange={e => setCustomPieceColors(c => ({...c, whiteStroke: e.target.value}))} />
+                                    <Input id="black-stroke" type="color" value={customPieceColors.blackStroke} onChange={e => setCustomPieceColors(c => ({...c, blackStroke: e.target.value}))} />
+                                </div>
+                            </div>
+                        )}
+
+                        <Separator />
+
                         <div className="flex items-center justify-between pt-1">
                             <Label htmlFor="possible-moves" className="text-sm">Show Possible Moves</Label>
                             <Switch id="possible-moves" checked={showPossibleMoves} onCheckedChange={setShowPossibleMoves} />
