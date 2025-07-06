@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { ChessPieceDisplay } from './chess-piece';
 import { cn } from '@/lib/utils';
 import type { useChessGame } from '@/hooks/use-chess-game';
@@ -21,48 +20,36 @@ export function ChessBoard({
   boardOrientation,
   pieceSet,
 }: ChessBoardProps) {
-  const boardLayout = useMemo(() => {
-    const squares: ChessSquare[] = [];
-    for (let i = 0; i < 8; i++) {
-      for (let j = 0; j < 8; j++) {
-        const row = 8 - i;
-        const col = String.fromCharCode(97 + j);
-        const square = `${col}${row}` as ChessSquare;
-        squares.push(square);
-      }
-    }
-    if (boardOrientation === 'b') {
-      return squares.reverse();
-    }
-    return squares;
-  }, [boardOrientation]);
+  const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const files = boardOrientation === 'w' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
 
   return (
     <div className="chess-board" data-theme={boardTheme}>
-      {boardLayout.map((square, index) => {
-        const row = Math.floor(index / 8);
-        const col = index % 8;
-        const isLight = (row + col) % 2 !== 0;
-        const piece = board.find(p => p.square === square);
-        const isPossibleMove = possibleMoves.some(m => m.to === square);
+      {ranks.map((rank, i) =>
+        files.map((file, j) => {
+          const square = `${file}${rank}` as ChessSquare;
+          const isLight = (i + j) % 2 !== 0;
+          const piece = board.find(p => p.square === square);
+          const isPossibleMove = possibleMoves.some(m => m.to === square);
 
-        return (
-          <div
-            key={square}
-            onClick={() => onSquareClick(square)}
-            className={cn('board-square', {
-              light: isLight,
-              dark: !isLight,
-              'selected-square': square === selectedSquare,
-              'last-move-highlight': showLastMoveHighlight && lastMove && (square === lastMove.from || square === lastMove.to),
-              'in-check-square': kingInCheck && kingInCheck === square,
-            })}
-          >
-            {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} />}
-            {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}
-          </div>
-        );
-      })}
+          return (
+            <div
+              key={square}
+              onClick={() => onSquareClick(square)}
+              className={cn('board-square', {
+                light: isLight,
+                dark: !isLight,
+                'selected-square': square === selectedSquare,
+                'last-move-highlight': showLastMoveHighlight && lastMove && (square === lastMove.from || square === lastMove.to),
+                'in-check-square': kingInCheck && kingInCheck === square,
+              })}
+            >
+              {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} />}
+              {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
