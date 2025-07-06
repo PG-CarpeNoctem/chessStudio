@@ -63,7 +63,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeGamePrompt',
   input: {schema: AnalyzeGameInputSchema},
   output: {schema: AnalyzeGameOutputSchema},
-  prompt: `You are a world-class chess grandmaster and coach, providing a comprehensive game report. You will be given a chess game in PGN format. Your task is to analyze it deeply.
+  prompt: `You are a world-class chess grandmaster and coach, providing a comprehensive game report similar to a top-tier engine like Stockfish. You will be given a chess game in PGN format. Your task is to analyze it deeply.
 
 PGN: {{{pgn}}}
 Skill Level: {{{skillLevel}}} (Tailor the depth of your explanations to this level).
@@ -72,15 +72,15 @@ Your output must be a JSON object that includes:
 0.  **pgn**: The exact PGN string you analyzed.
 1.  **summary**: A brief, high-level summary of the game's outcome and key turning points.
 2.  **analysis**: A detailed, move-by-move analysis. For each move in the PGN, provide its number, the player, the move in SAN, your classification, a concise explanation (1-2 sentences), and the centipawn evaluation of the position *after* the move. The evaluation should be from White's perspective (positive values favor White, negative values favor Black).
-    Classify each move according to these categories:
-    - **Book**: A standard opening move.
-    - **Brilliant (!!)**: A very rare, difficult-to-find move that is not only the best but also involves a sacrifice or a deep, non-obvious plan.
-    - **Great (!)**: A difficult-to-find move that significantly improves the position.
-    - **Excellent**: A strong move that maintains an advantage or is the best move in the position, but not particularly hard to find.
-    - **Good**: A solid move that is decent but not the best.
-    - **Inaccuracy (?)**: A move that is not the best and leads to a slight worsening of the position.
-    - **Mistake (??)**: A bad move that significantly worsens the position, such as losing material or a major positional advantage.
-    - **Blunder (???)**: A very bad move that leads to a losing position, such as losing the queen or getting checkmated.
+    Classify each move according to these categories with the following strict definitions:
+    - **Book**: A standard, theoretical opening move.
+    - **Brilliant (!!)**: A very rare, difficult-to-find move that is not only the best but also involves a significant sacrifice or a deep, non-obvious strategic plan that secures a winning advantage. The evaluation must show that the position improves despite the material loss.
+    - **Great (!)**: A difficult-to-find move that creates a significant advantage. This might not involve a sacrifice but is a key move that other strong moves do not match.
+    - **Excellent**: A strong move that maintains a significant advantage or is the best move in a complex position, but not particularly hard to find.
+    - **Good**: A solid, developing move that is decent but not the best.
+    - **Inaccuracy (?)**: A move that is not the best and leads to a slight but noticeable worsening of the position (e.g., a 50-90 centipawn loss from a better alternative).
+    - **Mistake (??)**: A bad move that significantly worsens the position, such as losing material or a major positional advantage (e.g., a 90-200 centipawn loss).
+    - **Blunder (???)**: A very bad move that throws away a winning position or leads to a losing one, such as losing a major piece or getting checkmated (e.g., a >200 centipawn loss).
 3.  **accuracies**: An object with 'white' and 'black' keys, containing accuracy percentages (0-100) for each player. Base this on how often they played the best or a very good move.
 4.  **moveCounts**: An object with 'white' and 'black' keys. For each player, provide a count of how many moves fell into each classification (brilliant, great, excellent, good, book, inaccuracy, mistake, blunder).
 5.  **opening**: A string with the name of the opening played.

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Loader2, BrainCircuit, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare, ChessPiece, ChessMove } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,14 +21,16 @@ import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 const classificationStyles: Record<string, { icon: React.ElementType, className: string, label: string }> = {
   Brilliant: { icon: Gem, className: 'text-cyan-400', label: 'Brilliant' },
-  Great: { icon: ThumbsUp, className: 'text-sky-500', label: 'Great' },
-  Excellent: { icon: CheckCircle2, className: 'text-green-500', label: 'Excellent' },
+  Great: { icon: Star, className: 'text-sky-500', label: 'Great' },
+  Excellent: { icon: ThumbsUp, className: 'text-green-500', label: 'Excellent' },
   Good: { icon: Check, className: 'text-lime-400', label: 'Good' },
   Book: { icon: BookOpen, className: 'text-gray-400', label: 'Book' },
   Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500', label: 'Inaccuracy' },
   Mistake: { icon: AlertCircle, className: 'text-orange-500', label: 'Mistake' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600', label: 'Blunder' },
 };
+const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Excellent', 'Good', 'Book', 'Inaccuracy', 'Mistake', 'Blunder'];
+
 
 const chartConfig = {
   evaluation: {
@@ -54,7 +56,6 @@ function AnalysisPageComponent() {
     if (!analysis || !analysis.pgn) return;
     
     const gameForReplay = new Chess();
-    // Load the canonical PGN from the analysis result.
     gameForReplay.loadPgn(analysis.pgn);
     const history = gameForReplay.history({ verbose: true });
     
@@ -66,7 +67,8 @@ function AnalysisPageComponent() {
     }
     
     setGame(boardAtMove);
-    setBoard(boardAtMove.board().flat().filter(p => p !== null));
+    const boardData = boardAtMove.board().flat().filter((p): p is NonNullable<typeof p> => p !== null).map(p => ({ square: p.square, piece: { type: p.type, color: p.color } }));
+    setBoard(boardData);
     setCurrentMoveIndex(index);
   }, [analysis]);
 
@@ -94,33 +96,29 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
-      
+      let pgnIsValid = false;
       try {
-        // loadPgn is the correct method for PGNs. It throws on error.
-        chess.loadPgn(pgnToAnalyze, { sloppy: true });
-      } catch (pgnError) {
-        // If PGN loading fails, it might be a FEN or just invalid.
+        pgnIsValid = chess.loadPgn(pgnToAnalyze, { sloppy: true });
+      } catch (e) {
+        // Ignore errors, we check history length below
+      }
+      
+      if (!pgnIsValid || chess.history().length === 0) {
+        // Now try loading as a FEN to provide a better error.
         try {
-          // The `load` method is for FENs. It also throws on error.
-          const chessFen = new Chess();
-          chessFen.load(pgnToAnalyze);
-          // If we reach here, it loaded as a FEN successfully.
+          const fenChess = new Chess();
+          fenChess.load(pgnToAnalyze); // This will throw if it's not a valid FEN.
+          // If it loads, it's a FEN.
           throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
-        } catch (fenError) {
-          // If it's the specific error we just threw, re-throw it.
-          if (fenError instanceof Error && fenError.message.startsWith("A FEN position")) {
+        } catch (fenError: any) {
+          if (fenError.message.startsWith("A FEN position")) {
             throw fenError;
           }
-          // Otherwise, it's not a valid FEN either, so the original input was invalid PGN.
-          throw new Error("Invalid PGN. Please check the format and try again.");
+          // Otherwise, it was just invalid PGN.
+          throw new Error("Invalid PGN provided. Please check the game data and try again.");
         }
       }
-      
-      // If we are here, PGN loaded successfully. Check for moves.
-      if (chess.history().length === 0) {
-        throw new Error("The PGN contains no moves. Please provide a full game to analyze.");
-      }
-      
+
       // PGN is valid and has moves, proceed with analysis.
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
@@ -203,25 +201,7 @@ function AnalysisPageComponent() {
 
         {/* Right side: Analysis Report */}
         <div className="flex flex-col gap-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Accuracies</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                     <div className="flex justify-between items-center text-sm font-medium">
-                        <span>White</span>
-                        <span>{analysis.accuracies.white.toFixed(1)}%</span>
-                     </div>
-                     <Progress value={analysis.accuracies.white} />
-                     <div className="flex justify-between items-center text-sm font-medium">
-                        <span>Black</span>
-                        <span>{analysis.accuracies.black.toFixed(1)}%</span>
-                     </div>
-                     <Progress value={analysis.accuracies.black} />
-                </CardContent>
-            </Card>
-
-            <Card>
+             <Card>
                  <CardHeader>
                     <CardTitle className="text-lg">Evaluation</CardTitle>
                     <p className="text-sm text-muted-foreground pt-1">{analysis.opening}</p>
@@ -244,19 +224,67 @@ function AnalysisPageComponent() {
                 </CardContent>
             </Card>
 
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Accuracies</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                     <div className="flex justify-between items-center text-sm font-medium">
+                        <span>White</span>
+                        <span>{analysis.accuracies.white.toFixed(1)}%</span>
+                     </div>
+                     <Progress value={analysis.accuracies.white} />
+                     <div className="flex justify-between items-center text-sm font-medium">
+                        <span>Black</span>
+                        <span>{analysis.accuracies.black.toFixed(1)}%</span>
+                     </div>
+                     <Progress value={analysis.accuracies.black} />
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Move Classifications</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableBody>
+                            {classificationOrder.map(key => {
+                                const style = classificationStyles[key];
+                                const whiteCount = analysis.moveCounts.white[key.toLowerCase() as keyof typeof analysis.moveCounts.white] || 0;
+                                const blackCount = analysis.moveCounts.black[key.toLowerCase() as keyof typeof analysis.moveCounts.black] || 0;
+                                const Icon = style.icon;
+                                return (
+                                    <TableRow key={key}>
+                                        <TableCell className="font-medium p-2 text-center w-1/3">{whiteCount}</TableCell>
+                                        <TableCell className="text-center p-2">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Icon className={cn("h-5 w-5", style.className)} />
+                                                <span className={cn("font-semibold", style.className)}>{style.label}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-medium p-2 text-center w-1/3">{blackCount}</TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
             <Card className="flex-1 flex flex-col">
                 <CardHeader>
                     <CardTitle className="text-lg">Move Analysis</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 flex-1">
-                    <ScrollArea className="h-[400px]">
+                    <ScrollArea className="h-[250px]">
                         <div className="grid grid-cols-[auto_1fr] px-6">
                             {analysis.analysis.map((move, index) => {
                                 const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400', label: 'Move' };
                                 const Icon = style.icon;
                                 return (
                                     <React.Fragment key={index}>
-                                        <div className="flex items-center gap-4 col-span-2 py-2 pr-4 rounded-md cursor-pointer" onClick={() => updateBoardAtMove(index)}>
+                                        <div className="flex items-center gap-4 col-span-2 py-2 pr-4 rounded-md cursor-pointer hover:bg-muted" onClick={() => updateBoardAtMove(index)}>
                                             <span className={cn("font-mono text-sm text-muted-foreground w-10 text-right", currentMoveIndex === index && "font-bold text-primary")}>
                                                 {move.player === 'White' ? `${move.moveNumber}.` : ''}
                                             </span>

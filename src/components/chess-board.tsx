@@ -10,8 +10,13 @@ import React from 'react';
 type ChessBoardProps = Pick<ReturnType<typeof useChessGame>, 
   'board' | 'onSquareClick' | 'onSquareRightClick' | 'selectedSquare' | 'possibleMoves' | 'lastMove' | 'kingInCheck' |
   'boardTheme' | 'showPossibleMoves' | 'showLastMoveHighlight' | 'boardOrientation' | 'pieceSet' |
-  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' | 'isAITurn' | 'turn' | 'showCoordinates'
->;
+  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' 
+> & {
+    isAITurn?: boolean;
+    turn?: 'w' | 'b';
+    showCoordinates?: boolean;
+};
+
 
 export function ChessBoard({
   board,
@@ -50,13 +55,15 @@ export function ChessBoard({
   
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    onSquareRightClick();
+    if (onSquareRightClick) {
+        onSquareRightClick();
+    }
   };
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>, toSquare: ChessSquare) => {
     e.preventDefault();
     const fromSquare = e.dataTransfer.getData('fromSquare') as ChessSquare;
-    if (fromSquare && fromSquare !== toSquare) {
+    if (fromSquare && fromSquare !== toSquare && handlePieceDrop) {
       handlePieceDrop(fromSquare, toSquare);
     }
   };
@@ -86,15 +93,15 @@ export function ChessBoard({
           files.map((file, j) => {
             const square = `${file}${rank}` as ChessSquare;
             const isLight = (i + j) % 2 !== 0;
-            const piece = board.find(p => p.square === square);
+            const pieceOnSquare = board.find(p => p.square === square);
             const isPossibleMove = possibleMoves.some(m => m.to === square);
             
-            const isDraggable = !isAITurn && piece && piece.color === turn;
+            const isDraggable = !isAITurn && pieceOnSquare && pieceOnSquare.piece.color === turn;
 
             return (
               <div
                 key={square}
-                onClick={() => onSquareClick(square)}
+                onClick={() => onSquareClick && onSquareClick(square)}
                 onDrop={(e) => onDrop(e, square)}
                 onDragOver={onDragOver}
                 className={cn('board-square', {
@@ -107,13 +114,13 @@ export function ChessBoard({
                   'premove-highlight': premove && (square === premove.from || square === premove.to),
                 })}
               >
-                {piece && (
+                {pieceOnSquare && (
                   <div
                     draggable={isDraggable}
                     onDragStart={(e) => isDraggable && onDragStart(e, square)}
                     className="w-full h-full flex items-center justify-center"
                   >
-                    <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} boardTheme={boardTheme} customColors={customColors} isDraggable={isDraggable} />
+                    <ChessPieceDisplay piece={pieceOnSquare.piece} pieceSet={pieceSet} boardTheme={boardTheme} customColors={customColors} isDraggable={isDraggable} />
                   </div>
                 )}
                 {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}

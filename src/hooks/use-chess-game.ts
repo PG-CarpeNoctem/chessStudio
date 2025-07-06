@@ -218,6 +218,7 @@ export const useChessGame = () => {
         g.setHeader('White', 'Player 1');
         g.setHeader('Black', 'Player 2');
     }
+    g.setHeader('Date', new Date().toISOString().split('T')[0]);
     gameRef.current = g;
     const { initialTime } = parseTimeControl(timeControl);
     updateGameState();
