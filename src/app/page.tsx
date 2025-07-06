@@ -4,8 +4,10 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export default function Home() {
   const game = useChessGame();
@@ -25,13 +27,38 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-full bg-background">
-      <GameSidebar {...game} />
-      <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-[calc(100vh-10rem)] aspect-square">
+      <GameSidebar {...game} className="hidden md:flex" />
+      <main className="flex flex-1 flex-col items-center justify-center p-2 md:p-4 relative">
+        <div className="md:hidden absolute top-4 left-4 z-10">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-[300px] bg-transparent border-0">
+              <GameSidebar {...game} className="w-full h-full border-r-0" />
+            </SheetContent>
+          </Sheet>
+        </div>
+        <div className="md:hidden absolute top-4 right-4 z-10">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0 w-[300px] bg-transparent border-0">
+              <AnalysisSidebar {...game} className="w-full h-full border-l-0" />
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="w-full max-w-[calc(100vh-2rem)] aspect-square">
           <ChessBoard {...game} />
         </div>
       </main>
-      <AnalysisSidebar {...game} />
+      <AnalysisSidebar {...game} className="hidden md:flex" />
     </div>
   );
 }

@@ -23,10 +23,13 @@ import {
   AlertDialogTitle,
 } from './ui/alert-dialog';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
-type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn'>;
+type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn'> & {
+  className?: string;
+};
 
-export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn }: AnalysisSidebarProps) {
+export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -51,7 +54,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn }: Analysis
   };
   
   return (
-    <aside className="w-80 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border">
+    <aside className={cn("w-72 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle>Game Analysis</CardTitle>

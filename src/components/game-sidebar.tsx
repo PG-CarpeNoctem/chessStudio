@@ -24,8 +24,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
 import type { PieceSet } from '@/lib/types';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
-type GameSidebarProps = ReturnType<typeof useChessGame>;
+type GameSidebarProps = ReturnType<typeof useChessGame> & {
+    className?: string;
+};
 
 export function GameSidebar({
   resetGame,
@@ -40,6 +43,7 @@ export function GameSidebar({
   flipBoard,
   pieceSet,
   setPieceSet,
+  className,
 }: GameSidebarProps) {
   const { toast } = useToast();
 
@@ -61,7 +65,7 @@ export function GameSidebar({
   };
 
   return (
-    <aside className="w-80 flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <aside className={cn("w-72 flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle className="font-headline text-2xl text-primary">
