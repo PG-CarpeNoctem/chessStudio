@@ -1,16 +1,22 @@
+
 'use client';
 
 import { ChessPieceDisplay } from './chess-piece';
 import { cn } from '@/lib/utils';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import type { ChessSquare, BoardTheme } from '@/lib/types';
+import type { ChessSquare } from '@/lib/types';
 import React from 'react';
 
-type ChessBoardProps = ReturnType<typeof useChessGame>;
+type ChessBoardProps = Pick<ReturnType<typeof useChessGame>, 
+  'board' | 'onSquareClick' | 'onSquareRightClick' | 'selectedSquare' | 'possibleMoves' | 'lastMove' | 'kingInCheck' |
+  'boardTheme' | 'showPossibleMoves' | 'showLastMoveHighlight' | 'boardOrientation' | 'pieceSet' |
+  'hint' | 'customBoardColors' | 'customPieceColors' | 'premove'
+>;
 
 export function ChessBoard({
   board,
   onSquareClick,
+  onSquareRightClick,
   selectedSquare,
   possibleMoves,
   lastMove,
@@ -23,6 +29,7 @@ export function ChessBoard({
   hint,
   customBoardColors,
   customPieceColors,
+  premove
 }: ChessBoardProps) {
   const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = boardOrientation === 'w' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
@@ -31,9 +38,14 @@ export function ChessBoard({
     '--custom-light-square': customBoardColors.light,
     '--custom-dark-square': customBoardColors.dark,
   } as React.CSSProperties : {};
+  
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onSquareRightClick();
+  };
 
   return (
-    <div className="chess-board" data-theme={boardTheme} style={boardStyle}>
+    <div className="chess-board" data-theme={boardTheme} style={boardStyle} onContextMenu={handleContextMenu}>
       {ranks.map((rank, i) =>
         files.map((file, j) => {
           const square = `${file}${rank}` as ChessSquare;
@@ -52,6 +64,7 @@ export function ChessBoard({
                 'last-move-highlight': showLastMoveHighlight && lastMove && (square === lastMove.from || square === lastMove.to),
                 'in-check-square': kingInCheck && kingInCheck === square,
                 'hint-highlight': hint && (square === hint.from || square === hint.to),
+                'premove-highlight': premove && (square === premove.from || square === premove.to),
               })}
             >
               {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} boardTheme={boardTheme} customPieceColors={customPieceColors} />}

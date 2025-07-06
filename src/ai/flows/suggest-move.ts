@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -36,15 +37,17 @@ const prompt = ai.definePrompt({
   name: 'suggestMovePrompt',
   input: {schema: SuggestMoveInputSchema},
   output: {schema: SuggestMoveOutputSchema},
-  prompt: `You are a professional chess player and coach. You are coaching a player in a game.
+  prompt: `You are a professional chess player acting as a chess engine.
 
 You will be given the current state of the board in Forsyth–Edwards Notation (FEN). You will also be given the skill level of the AI opponent.
 
-Based on the board state, suggest the best move for the AI opponent, and give a brief explanation of why this move is good.
+Based on the board state, suggest the best move for the AI opponent. Prioritize moves that lead to checkmate or a significant material advantage. Your primary goal is to win the game.
 
 Skill level: {{{skillLevel}}}
 
 Board state (FEN): {{{boardStateFen}}}
+
+Provide the move in UCI format (e.g., e2e4, g1f3) and a brief explanation of why this move is good.
 `,
 });
 

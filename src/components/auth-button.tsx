@@ -2,12 +2,13 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogIn, Star, LogOut } from 'lucide-react';
+import { LogIn, Star, LogOut, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Skeleton } from './ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Separator } from './ui/separator';
+import Link from 'next/link';
 
 export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
@@ -15,11 +16,24 @@ export function AuthButton() {
   const router = useRouter();
 
   useEffect(() => {
-    const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
-    setIsLoggedIn(loggedInStatus);
-    if (loggedInStatus) {
-        setUsername(localStorage.getItem('username') || 'PlayerOne');
+    const checkLoginStatus = () => {
+        const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
+        setIsLoggedIn(loggedInStatus);
+        if (loggedInStatus) {
+            setUsername(localStorage.getItem('username') || 'PlayerOne');
+        }
+    };
+    
+    checkLoginStatus();
+
+    const handleStorageChange = (e: StorageEvent) => {
+        if(e.key === 'isLoggedIn' || e.key === 'username') {
+            checkLoginStatus();
+        }
     }
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+
   }, []);
   
   const handleLogout = () => {
@@ -64,7 +78,7 @@ export function AuthButton() {
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-56" side="right" align="start" sideOffset={10}>
-          <div className="flex flex-col space-y-4">
+          <div className="flex flex-col space-y-2">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarImage src="https://placehold.co/40x40.png" alt={username} data-ai-hint="avatar abstract" />
@@ -76,17 +90,21 @@ export function AuthButton() {
               </div>
             </div>
             <Separator />
-            <div className="space-y-2">
+            <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">ELO Rating</span>
                 <span className="font-semibold flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-400" /> 1200
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground/80">This is a placeholder ELO rating.</p>
             </div>
-            <Separator />
-            <Button onClick={handleLogout} variant="ghost" size="sm" className="w-full justify-start">
+             <Button asChild variant="ghost" size="sm" className="w-full justify-start -mx-1">
+                <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                </Link>
+            </Button>
+            <Button onClick={handleLogout} variant="ghost" size="sm" className="w-full justify-start -mx-1">
               <LogOut className="mr-2 h-4 w-4" />
               Logout
             </Button>

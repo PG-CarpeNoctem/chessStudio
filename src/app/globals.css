@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -201,6 +202,11 @@
 .hint-highlight {
   @apply bg-green-500/30;
 }
+
+.premove-highlight {
+  background-color: hsla(var(--primary) / 0.25);
+}
+
 
 /* Move History Table Styles */
 .move-history-table {

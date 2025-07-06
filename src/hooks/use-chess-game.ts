@@ -21,6 +21,15 @@ const parseTimeControl = (timeControl: TimeControl) => {
     return { initialTime: minutes * 60 * 1000, increment: (increment || 0) * 1000 };
 };
 
+const getSetting = <T,>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    const value = localStorage.getItem(key);
+    try {
+        return value ? JSON.parse(value) : defaultValue;
+    } catch {
+        return defaultValue;
+    }
+};
 
 export const useChessGame = () => {
   const gameRef = useRef(new Chess());
@@ -44,16 +53,16 @@ export const useChessGame = () => {
   const [hint, setHint] = useState<ChessMove | null>(null);
   const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
+  const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
 
   // UI Settings
-  const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
-  const [showPossibleMoves, setShowPossibleMoves] = useState(true);
-  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
+  const [pieceSet, setPieceSet] = useState<PieceSet>(() => getSetting('chess:pieceSet', 'classic'));
+  const [showPossibleMoves, setShowPossibleMoves] = useState(() => getSetting('chess:showPossibleMoves', true));
+  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(() => getSetting('chess:showLastMoveHighlight', true));
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
-  const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
-  const [customBoardColors, setCustomBoardColors] = useState({ light: '#ebebd0', dark: '#779556' });
-  const [customPieceColors, setCustomPieceColors] = useState({ whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' });
-
+  const [customBoardColors, setCustomBoardColors] = useState(() => getSetting('chess:customBoardColors', { light: '#ebebd0', dark: '#779556' }));
+  const [customPieceColors, setCustomPieceColors] = useState(() => getSetting('chess:customPieceColors', { whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' }));
 
   const { toast } = useToast();
 
@@ -136,8 +145,9 @@ export const useChessGame = () => {
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     try {
-      const prevTurn = gameRef.current.turn();
-      const result = gameRef.current.move(move);
+      const g = gameRef.current;
+      const prevTurn = g.turn();
+      const result = g.move(move);
       if (result) {
         if (timeControl !== 'unlimited') {
             const { increment } = parseTimeControl(timeControl);
@@ -163,12 +173,13 @@ export const useChessGame = () => {
     setPossibleMoves([]);
     setIsAITurn(false);
     setHint(null);
+    setPremove(null);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl]);
 
   useEffect(() => {
-    if (gameMode === 'ai' && gameRef.current.turn() === 'b' && !gameRef.current.isGameOver()) {
+    if (gameMode === 'ai' && turn === 'b' && !gameOver) {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
@@ -177,6 +188,16 @@ export const useChessGame = () => {
             skillLevel,
           });
           makeMove(suggestedMove);
+          
+          // After AI move, if there is a premove, try to play it
+          if (premove) {
+              const premoveResult = gameRef.current.move(premove);
+              if (premoveResult) {
+                  updateGameState();
+              }
+              setPremove(null);
+          }
+
         } catch (error) {
           console.error('AI move failed:', error);
           toast({
@@ -191,13 +212,27 @@ export const useChessGame = () => {
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [turn, gameMode, skillLevel, makeMove, toast, pgn]);
+  }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove, updateGameState]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver || isAITurn) return;
-    
+    if (gameOver) return;
+
     const g = gameRef.current;
-    if (gameMode === 'ai' && g.turn() === 'b') return;
+    
+    // Premove logic
+    if (gameMode === 'ai' && g.turn() === 'b') {
+        if(selectedSquare) {
+            setPremove({from: selectedSquare, to: square});
+            setSelectedSquare(null);
+            setPossibleMoves([]);
+        } else {
+            const piece = g.get(square);
+            if (piece && piece.color === 'w') {
+                setSelectedSquare(square);
+            }
+        }
+        return;
+    }
 
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square, promotion: 'q' };
@@ -224,6 +259,12 @@ export const useChessGame = () => {
       }
     }
   }, [selectedSquare, makeMove, gameMode, gameOver, isAITurn]);
+  
+  const onSquareRightClick = useCallback(() => {
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+    setPremove(null);
+  }, []);
 
   const undoMove = useCallback(() => {
     if (gameRef.current.history().length === 0) return;
@@ -234,6 +275,7 @@ export const useChessGame = () => {
     }
     updateGameState();
     setHint(null);
+    setPremove(null);
     setSelectedSquare(null);
     setPossibleMoves([]);
   }, [updateGameState, gameMode]);
@@ -241,6 +283,22 @@ export const useChessGame = () => {
   const redoMove = useCallback(() => {
     toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
   }, [toast]);
+
+  // Load settings from localStorage on mount and listen for changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+        switch(e.key) {
+            case 'chess:boardTheme': setBoardTheme(JSON.parse(e.newValue!)); break;
+            case 'chess:pieceSet': setPieceSet(JSON.parse(e.newValue!)); break;
+            case 'chess:customBoardColors': setCustomBoardColors(JSON.parse(e.newValue!)); break;
+            case 'chess:customPieceColors': setCustomPieceColors(JSON.parse(e.newValue!)); break;
+            case 'chess:showPossibleMoves': setShowPossibleMoves(JSON.parse(e.newValue!)); break;
+            case 'chess:showLastMoveHighlight': setShowLastMoveHighlight(JSON.parse(e.newValue!)); break;
+        }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     resetGame();
@@ -335,7 +393,7 @@ export const useChessGame = () => {
   const canRedo = false; // Redo is complex and has been disabled to prevent bugs.
 
   return {
-    board, turn, onSquareClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage,
+    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
     customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors
   };
 };
