@@ -110,8 +110,20 @@ export function AnalysisSidebar({
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
-      setUsername(JSON.parse(storedUsername));
+      setUsername(storedUsername);
     }
+    
+    const handleUsernameChange = () => {
+      const newUsername = localStorage.getItem('username');
+      if (newUsername) {
+        setUsername(newUsername);
+      }
+    };
+    window.addEventListener('usernameChanged', handleUsernameChange);
+
+    return () => {
+      window.removeEventListener('usernameChanged', handleUsernameChange);
+    };
   }, []);
 
   const handleCopyPgn = () => {

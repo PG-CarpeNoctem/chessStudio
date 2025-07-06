@@ -21,13 +21,15 @@ export function AuthButton() {
         setIsLoggedIn(loggedInStatus);
         if (loggedInStatus) {
             setUsername(localStorage.getItem('username') || 'PlayerOne');
+        } else {
+            setUsername(null);
         }
     };
     
     // Check on mount
     checkLoginStatus();
 
-    // Listen for storage changes
+    // Listen for storage changes from other tabs
     const handleStorageChange = (e: StorageEvent) => {
         if(e.key === 'isLoggedIn' || e.key === 'username') {
             checkLoginStatus();
@@ -35,11 +37,11 @@ export function AuthButton() {
     }
     window.addEventListener('storage', handleStorageChange);
     
-    // Listen for username changes from other tabs (e.g. settings page)
+    // Listen for username changes from the settings page in the same tab
     const handleUsernameChange = () => {
       const newUsername = localStorage.getItem('username');
       if (newUsername) {
-        setUsername(JSON.parse(newUsername));
+        setUsername(newUsername);
       }
     };
     window.addEventListener('usernameChanged', handleUsernameChange);
@@ -51,19 +53,6 @@ export function AuthButton() {
     }
 
   }, []);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        try {
-          setUsername(JSON.parse(storedUsername));
-        } catch {
-          setUsername(storedUsername);
-        }
-      }
-    }
-  }, [isLoggedIn]);
   
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');

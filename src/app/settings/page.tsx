@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -27,8 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserCircle, Palette } from 'lucide-react';
 
 
-// Helper to safely get item from localStorage
-const getLocalStorageItem = (key: string, defaultValue: any) => {
+// Helper to safely get and parse a JSON item from localStorage
+const getJsonSetting = <T,>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') {
     return defaultValue;
   }
@@ -36,31 +35,35 @@ const getLocalStorageItem = (key: string, defaultValue: any) => {
   try {
     return saved ? JSON.parse(saved) : defaultValue;
   } catch {
-    localStorage.removeItem(key);
     return defaultValue;
   }
 };
 
-// Helper to safely set item in localStorage
-const setLocalStorageItem = (key: string, value: any) => {
+// Helper to safely set an item in localStorage, notifying other tabs
+const setJsonSetting = (key: string, value: any) => {
   if (typeof window === 'undefined') {
     return;
   }
-  localStorage.setItem(key, JSON.stringify(value));
-  // Dispatch a storage event to notify other components/tabs
-  window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(value) }));
-  if (key === 'username') {
-    window.dispatchEvent(new CustomEvent('usernameChanged'));
-  }
+  const stringifiedValue = JSON.stringify(value);
+  localStorage.setItem(key, stringifiedValue);
+  window.dispatchEvent(new StorageEvent('storage', { key, newValue: stringifiedValue }));
 };
 
+
 function ProfileSettings() {
-  const [username, setUsername] = useState(() => getLocalStorageItem('username', 'Player'));
+  const [username, setUsername] = useState(() => {
+    if (typeof window === 'undefined') return 'Player';
+    return localStorage.getItem('username') || 'Player';
+  });
   const { toast } = useToast();
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalStorageItem('username', username);
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('username', username);
+        // Dispatch a custom event to notify components in the same tab, like the AuthButton
+        window.dispatchEvent(new CustomEvent('usernameChanged'));
+    }
     toast({
       title: 'Profile Saved',
       description: 'Your username has been updated.',
@@ -94,15 +97,15 @@ function ProfileSettings() {
 }
 
 function AppearanceSettings() {
-    const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getLocalStorageItem('chess:boardTheme', 'cyan'));
-    const [pieceSet, setPieceSet] = useState<PieceSet>(() => getLocalStorageItem('chess:pieceSet', 'classic'));
-    const [customBoardColors, setCustomBoardColors] = useState(() => getLocalStorageItem('chess:customBoardColors', { light: '#ebebd0', dark: '#779556' }));
-    const [customPieceColors, setCustomPieceColors] = useState(() => getLocalStorageItem('chess:customPieceColors', { whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' }));
+    const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getJsonSetting('chess:boardTheme', 'cyan'));
+    const [pieceSet, setPieceSet] = useState<PieceSet>(() => getJsonSetting('chess:pieceSet', 'classic'));
+    const [customBoardColors, setCustomBoardColors] = useState(() => getJsonSetting('chess:customBoardColors', { light: '#ebebd0', dark: '#779556' }));
+    const [customPieceColors, setCustomPieceColors] = useState(() => getJsonSetting('chess:customPieceColors', { whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' }));
     
-    useEffect(() => { setLocalStorageItem('chess:boardTheme', boardTheme); }, [boardTheme]);
-    useEffect(() => { setLocalStorageItem('chess:pieceSet', pieceSet); }, [pieceSet]);
-    useEffect(() => { setLocalStorageItem('chess:customBoardColors', customBoardColors); }, [customBoardColors]);
-    useEffect(() => { setLocalStorageItem('chess:customPieceColors', customPieceColors); }, [customPieceColors]);
+    useEffect(() => { setJsonSetting('chess:boardTheme', boardTheme); }, [boardTheme]);
+    useEffect(() => { setJsonSetting('chess:pieceSet', pieceSet); }, [pieceSet]);
+    useEffect(() => { setJsonSetting('chess:customBoardColors', customBoardColors); }, [customBoardColors]);
+    useEffect(() => { setJsonSetting('chess:customPieceColors', customPieceColors); }, [customPieceColors]);
 
   return (
     <Card>
