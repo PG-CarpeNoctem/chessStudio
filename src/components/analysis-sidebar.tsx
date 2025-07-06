@@ -105,6 +105,14 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
     setIsAnalyzing(true);
     setAnalysis(null);
     try {
+      if (!pgn || pgn.trim() === '') {
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: 'Cannot analyze an empty game.',
+        });
+        return;
+      }
       const result = await analyzeGame({ pgn, skillLevel: 'intermediate' });
       setAnalysis(result);
     } catch (error) {
@@ -199,7 +207,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
 
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardContent className='p-3'>
-          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !pgn} className="w-full">
+          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !gameOver} className="w-full">
             {isAnalyzing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -211,16 +219,16 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
       </Card>
 
       <AlertDialog open={!!analysis} onOpenChange={(open) => !open && setAnalysis(null)}>
-        <AlertDialogContent className="max-w-3xl">
+        <AlertDialogContent className="max-w-2xl h-[70vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
             <AlertDialogDescription>
               {analysis?.summary}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Separator className="my-4" />
-          <ScrollArea className="h-[50vh] pr-4 -mx-2">
-             <div className="flex flex-col gap-1 p-2">
+          <Separator />
+          <ScrollArea className="flex-1 -mx-6">
+             <div className="flex flex-col gap-1 px-6">
                 {analysis?.analysis.map((move, index) => {
                   const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400' };
                   const Icon = style.icon;
@@ -242,7 +250,8 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
                 })}
              </div>
           </ScrollArea>
-          <AlertDialogFooter>
+          <Separator />
+          <AlertDialogFooter className='pt-4'>
             <AlertDialogAction onClick={() => setAnalysis(null)}>Close</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

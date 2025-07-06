@@ -42,7 +42,7 @@ const parseTimeControl = (timeControl: TimeControl) => {
 
 export const useChessGame = () => {
   const [game, setGame] = useState(new Chess());
-  const [history, setHistory] = useState<ChessMove[]>([]);
+  const [history, setHistory] = useState<readonly ChessMove[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
@@ -58,7 +58,7 @@ export const useChessGame = () => {
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
 
   // UI Settings
-  const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
   const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
@@ -118,6 +118,7 @@ export const useChessGame = () => {
 
     setCapturedPieces(captured);
     setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
+    setHistory(g.history({verbose: true}));
 
     if (g.isGameOver()) {
       setTimerOn(false);
@@ -151,7 +152,6 @@ export const useChessGame = () => {
         }
 
         setGame(gameCopy);
-        setHistory(gameCopy.history({ verbose: true }));
         updateGameState(gameCopy);
         setRedoStack([]);
         setHint(null);
@@ -169,7 +169,6 @@ export const useChessGame = () => {
     const newGame = new Chess();
     const { initialTime } = parseTimeControl(timeControl);
     setGame(newGame);
-    setHistory([]);
     updateGameState(newGame);
     setSelectedSquare(null);
     setPossibleMoves([]);
@@ -253,7 +252,6 @@ export const useChessGame = () => {
       }
 
       setGame(gameCopy);
-      setHistory(gameCopy.history({ verbose: true }));
       updateGameState(gameCopy);
       setHint(null);
     }
@@ -274,7 +272,6 @@ export const useChessGame = () => {
       }
 
       setGame(gameCopy);
-      setHistory(gameCopy.history({ verbose: true }));
       updateGameState(gameCopy);
       setHint(null);
     }
@@ -322,6 +319,15 @@ export const useChessGame = () => {
 
       let moveDetails = game.moves({ verbose: true }).find(m => m.san === suggestedMove || (m.from + m.to === suggestedMove) || (m.from + m.to + (m.promotion || '') === suggestedMove));
       
+      if (!moveDetails) {
+        // AI might return UCI, let's try to make the move to get the SAN
+        const gameCopy = new Chess(game.fen());
+        const result = gameCopy.move(suggestedMove);
+        if (result) {
+            moveDetails = result;
+        }
+      }
+
       if (moveDetails) {
         setHint(moveDetails);
         toast({
@@ -329,7 +335,7 @@ export const useChessGame = () => {
           description: explanation,
         });
       } else {
-        throw new Error("AI suggested an invalid move: " + suggestedMove);
+        throw new Error("AI suggested an invalid or unparseable move: " + suggestedMove);
       }
     } catch (error) {
       console.error(error);
