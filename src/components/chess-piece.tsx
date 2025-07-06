@@ -27,6 +27,14 @@ const PIECE_SETS: Record<PieceSet, Record<PieceType['type'], string>> = {
     q: 'M 9,35 14,35 14,31 9,31 z M 36,35 31,35 31,31 36,31 z M 22.5,31.5 C 20.0147,31.5 18,29.4853 18,27 C 18,24.5147 20.0147,22.5 22.5,22.5 C 24.9853,22.5 27,24.5147 27,27 C 27,29.4853 24.9853,31.5 22.5,31.5 z M 12,25 C 15.5,19 19,15 22.5,15 C 26,15 29.5,19 33,25 L 12,25 z M 22.5,15 C 21.5,14 23.5,14 22.5,15 z M 19.5,14.5 C 19.5,13.5 20.5,12.5 22.5,12.5 C 24.5,12.5 25.5,13.5 25.5,14.5 L 19.5,14.5 z',
     k: 'm 22.5,35 c -3.31371,0 -6,-2.68629 -6,-6 0,-3.31371 2.68629,-6 6,-6 3.31371,0 6,2.68629 6,6 0,3.31371 -2.68629,6 -6,6 z m 0,-14 c -3.86599,0 -7,3.13401 -7,7 0,3.86599 3.13401,7 7,7 3.86599,0 7,-3.13401 7,-7 0,-3.86599 -3.13401,-7 -7,-7 z m 0,-2 c 1,0 1,-1 1,-1 0,0 1,-1 1,-1 l -4,0 c 0,0 1,1 1,1 0,0 0,1 1,1 z m -1,0 2,0 m -1,7 0,4'
   },
+  neo: {
+    p: 'M22.5 34c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5zm-4-10h8l-1-3h-6l-1 3zm1-3h6l-1-2h-4l-1 2z',
+    r: 'M14 34h17v-2H14v2zm2-2h13V15H16v17zm-1-17h15v-3h-2v-3h-2v3h-2v-3h-3v3h-2v-3h-2v3H15v3z',
+    n: 'M18 34h9v-2h-9v2zm-1-2h11v-2H17v2zm-1-2h13l-1-2-1 2h-1l-1-2-1 2h-1l-1-2-1 2h-1l-1-2-1 2h-1l-1-2-1 2zm-2-13c0-2.8 2.2-5 5-5s5 2.2 5 5c0 1-0.4 1.9-1 2.6L25 18l-1.5 1.5L22 18l-1.5 1.5L19 18l-1.5 1.5L16 18l-1-1.4c-0.6-0.7-1-1.6-1-2.6z',
+    b: 'M22.5 34c-3.9 0-7-3.1-7-7s3.1-7 7-7 7 3.1 7 7-3.1 7-7 7zm0-9c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2zm0-5c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z',
+    q: 'M12 34h3v-3h-3v3zm18 0h3v-3h-3v3zm-9 0h3v-3h-3v3zm-9-5h21l-2-4h-17l-2 4zm2-4h17l-2-4h-13l-2 4zM16 9h13l-3 4h-7l-3-4z',
+    k: 'M22.5 34c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-10c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2zM21 7h3v-4h-3v4zm-3 2h9v-2h-9v2z'
+  }
 };
 
 type CustomPieceColors = {
@@ -79,11 +87,12 @@ interface PieceProps {
   boardTheme: BoardTheme;
   customPieceColors: CustomPieceColors;
   className?: string;
+  isDraggable?: boolean;
 }
 
-export function ChessPieceDisplay({ piece, pieceSet, boardTheme, customPieceColors, className }: PieceProps) {
+export function ChessPieceDisplay({ piece, pieceSet, boardTheme, customPieceColors, className, isDraggable }: PieceProps) {
   return (
-    <div className={cn('chess-piece', className)}>
+    <div className={cn('chess-piece', className)} draggable={isDraggable}>
       <PieceSvg type={piece.type} color={piece.color} pieceSet={pieceSet} boardTheme={boardTheme} customPieceColors={customPieceColors} />
     </div>
   );

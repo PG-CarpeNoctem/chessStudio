@@ -177,11 +177,15 @@
 
 .chess-piece {
   @apply w-4/5 h-4/5 z-10;
-  cursor: grab;
 }
-.chess-piece:active {
-  cursor: grabbing;
+
+.chess-piece[draggable="true"] {
+    cursor: grab;
 }
+.chess-piece[draggable="true"]:active {
+    cursor: grabbing;
+}
+
 
 .possible-move-dot {
   @apply absolute w-1/3 h-1/3 rounded-full bg-primary/50 pointer-events-none;

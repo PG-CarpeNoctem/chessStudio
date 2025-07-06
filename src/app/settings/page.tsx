@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { PieceSet, BoardTheme } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserCircle, Palette } from 'lucide-react';
 
 
 // Helper to safely get item from localStorage
@@ -46,6 +47,11 @@ const setLocalStorageItem = (key: string, value: any) => {
     return;
   }
   localStorage.setItem(key, JSON.stringify(value));
+  // Dispatch a storage event to notify other components/tabs
+  window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(value) }));
+  if (key === 'username') {
+    window.dispatchEvent(new CustomEvent('usernameChanged'));
+  }
 };
 
 function ProfileSettings() {
@@ -115,6 +121,7 @@ function AppearanceSettings() {
                         <SelectItem value="classic">Classic</SelectItem>
                         <SelectItem value="alpha">Alpha</SelectItem>
                         <SelectItem value="merida">Merida</SelectItem>
+                        <SelectItem value="neo">Neo</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

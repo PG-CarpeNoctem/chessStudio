@@ -168,13 +168,30 @@ export const useChessGame = () => {
     return false;
   }, [timeControl, timerOn, updateGameState]);
 
+  const resetMoveSelection = () => {
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+  };
+
+  const handlePieceDrop = useCallback((from: ChessSquare, to: ChessSquare) => {
+    if (gameOver || isAITurn) return;
+
+    if (gameMode === 'ai' && turn === 'b') {
+        setPremove({ from, to });
+        resetMoveSelection();
+        return;
+    }
+    
+    const move = { from, to, promotion: 'q' };
+    makeMove(move);
+    resetMoveSelection();
+  }, [makeMove, gameMode, turn, gameOver, isAITurn]);
 
   const resetGame = useCallback(() => {
     gameRef.current = new Chess();
     const { initialTime } = parseTimeControl(timeControl);
     updateGameState();
-    setSelectedSquare(null);
-    setPossibleMoves([]);
+    resetMoveSelection();
     setIsAITurn(false);
     setHint(null);
     setPremove(null);
@@ -189,7 +206,6 @@ export const useChessGame = () => {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
-          // Add a check to see if there is only one legal move
           const legalMoves = gameRef.current.moves({ verbose: true });
           if (legalMoves.length === 1) {
               makeMove(legalMoves[0].san);
@@ -233,8 +249,7 @@ export const useChessGame = () => {
     if (gameMode === 'ai' && g.turn() === 'b') {
         if(selectedSquare) {
             setPremove({from: selectedSquare, to: square});
-            setSelectedSquare(null);
-            setPossibleMoves([]);
+            resetMoveSelection();
         } else {
             const piece = g.get(square);
             if (piece && piece.color === 'w') {
@@ -254,12 +269,10 @@ export const useChessGame = () => {
           setSelectedSquare(square);
           setPossibleMoves(g.moves({ square, verbose: true }));
         } else {
-          setSelectedSquare(null);
-          setPossibleMoves([]);
+          resetMoveSelection();
         }
       } else {
-         setSelectedSquare(null);
-         setPossibleMoves([]);
+         resetMoveSelection();
       }
     } else {
       const piece = g.get(square);
@@ -268,11 +281,10 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, makeMove, gameMode, gameOver, isAITurn]);
+  }, [selectedSquare, makeMove, gameMode, gameOver, isAITurn, turn]);
   
   const onSquareRightClick = useCallback(() => {
-    setSelectedSquare(null);
-    setPossibleMoves([]);
+    resetMoveSelection();
     setPremove(null);
   }, []);
 
@@ -286,8 +298,7 @@ export const useChessGame = () => {
     updateGameState();
     setHint(null);
     setPremove(null);
-    setSelectedSquare(null);
-    setPossibleMoves([]);
+    resetMoveSelection();
   }, [updateGameState, gameMode]);
 
   const redoMove = useCallback(() => {
@@ -436,6 +447,6 @@ export const useChessGame = () => {
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
     customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors,
-    analysis, isAnalyzing, analyzeCurrentGame, clearAnalysis
+    analysis, isAnalyzing, analyzeCurrentGame, clearAnalysis, handlePieceDrop
   };
 };
