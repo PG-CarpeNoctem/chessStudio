@@ -40,7 +40,7 @@ const parseTimeControl = (timeControl: TimeControl) => {
 };
 
 
-export const useChessGame = (playerColor: PlayerColor = 'w') => {
+export const useChessGame = () => {
   const [game, setGame] = useState(new Chess());
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
@@ -136,15 +136,13 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     } else {
         setGameOver(null);
     }
-  }, []);
+  }, [setCapturedPieces, setMaterialAdvantage, setTimerOn, setGameOver]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
-    // Clone the game to avoid mutation
     const gameCopy = new Chess(game.fen());
     try {
       const result = gameCopy.move(move);
       if (result) {
-        // Add increment if applicable
         if (timeControl !== 'unlimited') {
             const { increment } = parseTimeControl(timeControl);
             const prevTurn = game.turn();
@@ -153,21 +151,20 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
 
         setGame(gameCopy);
         updateGameState(gameCopy);
-        setRedoStack([]); // Clear redo stack on new move
-        setHint(null); // Clear hint on new move
-        if (!timerOn) setTimerOn(true); // Start timer on first move
+        setRedoStack([]);
+        setHint(null);
+        if (!timerOn && timeControl !== 'unlimited') setTimerOn(true);
         return true;
       }
     } catch (e) {
-      // Invalid move
       return false;
     }
     return false;
-  }, [game, updateGameState, timeControl, timerOn]);
+  }, [game, updateGameState, timeControl, timerOn, setTime, setGame, setRedoStack, setHint, setTimerOn]);
 
 
   useEffect(() => {
-    if (gameMode === 'ai' && game.turn() !== playerColor && !game.isGameOver()) {
+    if (gameMode === 'ai' && game.turn() === 'b' && !game.isGameOver()) {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
@@ -187,29 +184,26 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
           setIsAITurn(false);
         }
       };
-      // Add a small delay for better UX
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [game, playerColor, skillLevel, makeMove, toast, gameMode]);
+  }, [game, gameMode, skillLevel, makeMove, toast]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver) return;
-    // In 'ai' mode, only allow moves for the player
-    if (gameMode === 'ai' && game.turn() !== playerColor) return;
+    if (gameOver || isAITurn) return;
+    
+    if (gameMode === 'ai' && game.turn() === 'b') return;
 
     if (selectedSquare) {
-      const move = { from: selectedSquare, to: square, promotion: 'q' }; // Auto-promote to Queen
+      const move = { from: selectedSquare, to: square, promotion: 'q' };
       const isMoveSuccessful = makeMove(move);
       
       if (!isMoveSuccessful) {
-        // If the move failed, maybe the user wants to select another of their pieces
         const piece = game.get(square);
-        if (piece && (gameMode === 'two-player' || piece.color === game.turn())) {
+        if (piece && piece.color === game.turn()) {
           setSelectedSquare(square);
           setPossibleMoves(game.moves({ square, verbose: true }));
         } else {
-          // or deselect
           setSelectedSquare(null);
           setPossibleMoves([]);
         }
@@ -217,15 +211,14 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
          setSelectedSquare(null);
          setPossibleMoves([]);
       }
-
     } else {
       const piece = game.get(square);
-      if (piece && (gameMode === 'two-player' || piece.color === game.turn())) {
+      if (piece && piece.color === game.turn()) {
         setSelectedSquare(square);
         setPossibleMoves(game.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, game, playerColor, makeMove, gameMode, gameOver]);
+  }, [selectedSquare, game, makeMove, gameMode, gameOver, isAITurn]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -242,34 +235,49 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   }, [updateGameState, timeControl]);
 
   const undoMove = useCallback(() => {
+    if (game.history().length === 0) return;
+    
     const gameCopy = new Chess(game.fen());
     const undoneMove = gameCopy.undo();
     if (undoneMove) {
+      setRedoStack((prev) => [undoneMove, ...prev]);
+
+      if (gameMode === 'ai' && game.history().length > 1) {
+        const undoneMove2 = gameCopy.undo();
+        if (undoneMove2) {
+            setRedoStack((prev) => [undoneMove2, ...prev]);
+        }
+      }
+
       setGame(gameCopy);
       updateGameState(gameCopy);
-      setRedoStack((prev) => [undoneMove, ...prev]);
       setHint(null);
     }
-  }, [game, updateGameState]);
+  }, [game, updateGameState, gameMode]);
 
   const redoMove = useCallback(() => {
     if (redoStack.length > 0) {
-      const move_to_redo = redoStack[0];
       const gameCopy = new Chess(game.fen());
-      const result = gameCopy.move(move_to_redo);
-      if (result) {
-        setGame(gameCopy);
-        updateGameState(gameCopy);
+      const move_to_redo = redoStack[0];
+      gameCopy.move(move_to_redo);
+
+      if (gameMode === 'ai' && redoStack.length > 1) {
+        const move_to_redo2 = redoStack[1];
+        gameCopy.move(move_to_redo2);
+        setRedoStack((prev) => prev.slice(2));
+      } else {
         setRedoStack((prev) => prev.slice(1));
-        setHint(null);
       }
+
+      setGame(gameCopy);
+      updateGameState(gameCopy);
+      setHint(null);
     }
-  }, [redoStack, game, updateGameState]);
+  }, [redoStack, game, updateGameState, gameMode]);
 
   useEffect(() => {
-    const { initialTime } = parseTimeControl(timeControl);
-    setTime({ w: initialTime, b: initialTime });
-  }, [timeControl]);
+    resetGame();
+  }, [timeControl, gameMode, resetGame]);
 
   useEffect(() => {
     if (!timerOn || gameOver || timeControl === 'unlimited') {
@@ -290,7 +298,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, game, timeControl]);
+  }, [timerOn, gameOver, game, timeControl, setGameOver]);
 
 
   const getHint = useCallback(async () => {
@@ -304,10 +312,9 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     try {
       const { suggestedMove, explanation } = await suggestMove({
         boardStateFen: game.fen(),
-        skillLevel: 20, // Use max skill for the best possible hint
+        skillLevel: 20,
       });
 
-      // AI might return UCI or SAN, so we need to validate and convert to a move object
       let moveDetails = game.moves({ verbose: true }).find(m => m.san === suggestedMove || (m.from + m.to === suggestedMove) || (m.from + m.to + (m.promotion || '') === suggestedMove));
       
       if (moveDetails) {
