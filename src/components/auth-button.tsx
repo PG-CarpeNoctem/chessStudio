@@ -1,11 +1,12 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogIn } from 'lucide-react';
+import { LogIn, Star, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Skeleton } from './ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Separator } from './ui/separator';
 
 export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
@@ -39,23 +40,51 @@ export function AuthButton() {
 
   if (isLoggedIn) {
     return (
-      <div className="flex items-center gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src="https://placehold.co/40x40.png" alt="@playerone" data-ai-hint="avatar abstract" />
-          <AvatarFallback>
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col">
-          <span className="font-semibold text-sm">PlayerOne</span>
-          <button
-            className="text-xs text-muted-foreground hover:text-primary transition-colors text-left"
-            onClick={handleLogout}
-          >
-            Logout
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="flex items-center gap-3 text-left w-full hover:bg-sidebar-accent p-1 rounded-md transition-colors">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="https://placehold.co/40x40.png" alt="@playerone" data-ai-hint="avatar abstract" />
+              <AvatarFallback>
+                <Skeleton className="h-8 w-8 rounded-full" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-semibold text-sm">PlayerOne</span>
+              <span className="text-xs text-muted-foreground">View Profile</span>
+            </div>
           </button>
-        </div>
-      </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-56" side="right" align="start" sideOffset={10}>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src="https://placehold.co/40x40.png" alt="@playerone" data-ai-hint="avatar abstract" />
+                <AvatarFallback>P1</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-bold">PlayerOne</p>
+                <p className="text-xs text-muted-foreground">Online</p>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">ELO Rating</span>
+                <span className="font-semibold flex items-center gap-1">
+                  <Star className="w-4 h-4 text-yellow-400" /> 1200
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground/80">This is a placeholder ELO rating.</p>
+            </div>
+            <Separator />
+            <Button onClick={handleLogout} variant="ghost" size="sm" className="w-full justify-start">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   }
 

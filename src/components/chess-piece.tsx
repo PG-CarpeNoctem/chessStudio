@@ -52,6 +52,7 @@ export function ChessPieceDisplay({ piece, pieceSet, className }: PieceProps) {
         alt={`${pieceColor} ${pieceInfo.hint}`}
         width={80}
         height={80}
+        unoptimized={true}
         className="w-full h-full"
         data-ai-hint={hint}
         // Add a subtle drop-shadow to the pieces
