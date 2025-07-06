@@ -89,22 +89,80 @@
 .board-square {
   @apply w-full h-full flex justify-center items-center relative transition-colors duration-200;
 }
+
+/* Default Theme: Classic */
 .board-square.light {
-  background-color: hsl(200, 30%, 90%);
+  background-color: #f0d9b5;
 }
 .board-square.dark {
-  background-color: hsl(190, 35%, 55%);
+  background-color: #b58863;
 }
-
 .dark .board-square.light {
-  background-color: hsl(210, 15%, 55%);
+  background-color: #f0d9b5;
 }
 .dark .board-square.dark {
+  background-color: #b58863;
+}
+
+/* Cyan Theme */
+.chess-board[data-theme='cyan'] .board-square.light {
+  background-color: hsl(200, 30%, 90%);
+}
+.chess-board[data-theme='cyan'] .board-square.dark {
+  background-color: hsl(190, 35%, 55%);
+}
+.dark .chess-board[data-theme='cyan'] .board-square.light {
+  background-color: hsl(210, 15%, 55%);
+}
+.dark .chess-board[data-theme='cyan'] .board-square.dark {
   background-color: hsl(195, 20%, 35%);
 }
 
+/* Ocean Theme */
+.chess-board[data-theme='ocean'] .board-square.light {
+  background-color: #cce7f5;
+}
+.chess-board[data-theme='ocean'] .board-square.dark {
+  background-color: #7aa1d2;
+}
+.dark .chess-board[data-theme='ocean'] .board-square.light {
+  background-color: #9cbde0;
+}
+.dark .chess-board[data-theme='ocean'] .board-square.dark {
+  background-color: #547aa6;
+}
+
+/* Forest Theme */
+.chess-board[data-theme='forest'] .board-square.light {
+  background-color: #ebebd0;
+}
+.chess-board[data-theme='forest'] .board-square.dark {
+  background-color: #779556;
+}
+.dark .chess-board[data-theme='forest'] .board-square.light {
+  background-color: #bacaa4;
+}
+.dark .chess-board[data-theme='forest'] .board-square.dark {
+  background-color: #5c7841;
+}
+
+/* Charcoal Theme */
+.chess-board[data-theme='charcoal'] .board-square.light {
+  background-color: #9e9e9e;
+}
+.chess-board[data-theme='charcoal'] .board-square.dark {
+  background-color: #616161;
+}
+.dark .chess-board[data-theme='charcoal'] .board-square.light {
+  background-color: #757575;
+}
+.dark .chess-board[data-theme='charcoal'] .board-square.dark {
+  background-color: #424242;
+}
+
+
 .chess-piece {
-  @apply w-4/5 h-4/5 z-10 text-foreground;
+  @apply w-4/5 h-4/5 z-10;
   cursor: grab;
 }
 .chess-piece:active {

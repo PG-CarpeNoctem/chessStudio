@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'ChessClash',
+  title: 'PGChess',
   description: 'An intelligent chess application powered by GenAI',
 };
 

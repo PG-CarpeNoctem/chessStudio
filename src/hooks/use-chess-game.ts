@@ -5,18 +5,9 @@ import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
+type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal';
 
 export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [game, setGame] = useState(new Chess());
@@ -26,6 +17,11 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [isAITurn, setIsAITurn] = useState(false);
   const [skillLevel, setSkillLevel] = useState(4); // Stockfish level 1-20
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
+
+  // UI Settings
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
+  const [showPossibleMoves, setShowPossibleMoves] = useState(true);
+  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
 
   const { toast } = useToast();
 
@@ -173,5 +169,11 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     gameOver,
     skillLevel,
     setSkillLevel,
+    boardTheme,
+    setBoardTheme,
+    showPossibleMoves,
+    setShowPossibleMoves,
+    showLastMoveHighlight,
+    setShowLastMoveHighlight,
   };
 };

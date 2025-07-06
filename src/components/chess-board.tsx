@@ -15,6 +15,9 @@ export function ChessBoard({
   possibleMoves,
   lastMove,
   kingInCheck,
+  boardTheme,
+  showPossibleMoves,
+  showLastMoveHighlight,
 }: ChessBoardProps) {
   const boardLayout = useMemo(() => {
     const squares = [];
@@ -30,7 +33,7 @@ export function ChessBoard({
   }, []);
 
   return (
-    <div className="chess-board">
+    <div className="chess-board" data-theme={boardTheme}>
       {boardLayout.map((square, index) => {
         const row = Math.floor(index / 8);
         const col = index % 8;
@@ -46,12 +49,12 @@ export function ChessBoard({
               light: isLight,
               dark: !isLight,
               'selected-square': square === selectedSquare,
-              'last-move-highlight': lastMove && (square === lastMove.from || square === lastMove.to),
+              'last-move-highlight': showLastMoveHighlight && lastMove && (square === lastMove.from || square === lastMove.to),
               'in-check-square': kingInCheck && kingInCheck === square,
             })}
           >
             {piece && <ChessPieceDisplay piece={piece.piece} />}
-            {isPossibleMove && <div className="possible-move-dot" />}
+            {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}
           </div>
         );
       })}

@@ -22,19 +22,19 @@ import { AuthButton } from './auth-button';
 import { analyzeGame } from '@/ai/flows/analyze-game';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { AlertCircle, BrainCircuit, Loader2, Play } from 'lucide-react';
+import { BrainCircuit, Loader2, Play, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import { Switch } from './ui/switch';
 
 type GameSidebarProps = ReturnType<typeof useChessGame>;
 
@@ -45,6 +45,12 @@ export function GameSidebar({
   skillLevel,
   setSkillLevel,
   isAITurn,
+  boardTheme,
+  setBoardTheme,
+  showPossibleMoves,
+  setShowPossibleMoves,
+  showLastMoveHighlight,
+  setShowLastMoveHighlight,
 }: GameSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -92,7 +98,7 @@ export function GameSidebar({
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle className="font-headline text-2xl text-primary">
-            ChessClash
+            PGChess
           </CardTitle>
           <CardDescription>
             The intelligent chess experience.
@@ -103,7 +109,7 @@ export function GameSidebar({
         </CardContent>
       </Card>
 
-      <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border">
+      <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle>Game Controls</CardTitle>
         </CardHeader>
@@ -112,7 +118,23 @@ export function GameSidebar({
             <Play className="mr-2 h-4 w-4" />
             New Game
           </Button>
-
+          <Separator />
+          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !pgn}>
+            {isAnalyzing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <BrainCircuit className="mr-2 h-4 w-4" />
+            )}
+            Analyze Game
+          </Button>
+        </CardContent>
+      </Card>
+      
+      <Card className="bg-sidebar-accent border-sidebar-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Settings /> Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
           <div className="space-y-2">
             <Label htmlFor="difficulty">AI Difficulty</Label>
             <Select onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
@@ -127,15 +149,29 @@ export function GameSidebar({
             </Select>
             <p className="text-xs text-muted-foreground">Current AI Skill: {skillLevel}</p>
           </div>
-          <Separator />
-          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !pgn}>
-            {isAnalyzing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <BrainCircuit className="mr-2 h-4 w-4" />
-            )}
-            Analyze Game
-          </Button>
+           <div className="space-y-2">
+              <Label htmlFor="theme">Board Theme</Label>
+              <Select onValueChange={(value) => setBoardTheme(value as any)} defaultValue={boardTheme}>
+                  <SelectTrigger id="theme">
+                      <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="classic">Classic</SelectItem>
+                      <SelectItem value="cyan">Cyan</SelectItem>
+                      <SelectItem value="ocean">Ocean</SelectItem>
+                      <SelectItem value="forest">Forest</SelectItem>
+                      <SelectItem value="charcoal">Charcoal</SelectItem>
+                  </SelectContent>
+              </Select>
+          </div>
+          <div className="flex items-center justify-between pt-2">
+              <Label htmlFor="possible-moves" className="text-sm">Show Possible Moves</Label>
+              <Switch id="possible-moves" checked={showPossibleMoves} onCheckedChange={setShowPossibleMoves} />
+          </div>
+          <div className="flex items-center justify-between">
+              <Label htmlFor="last-move" className="text-sm">Highlight Last Move</Label>
+              <Switch id="last-move" checked={showLastMoveHighlight} onCheckedChange={setShowLastMoveHighlight} />
+          </div>
         </CardContent>
       </Card>
 
