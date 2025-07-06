@@ -19,6 +19,7 @@ export function ChessBoard({
   showLastMoveHighlight,
   boardOrientation,
   pieceSet,
+  hint,
 }: ChessBoardProps) {
   const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = boardOrientation === 'w' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
@@ -42,6 +43,7 @@ export function ChessBoard({
                 'selected-square': square === selectedSquare,
                 'last-move-highlight': showLastMoveHighlight && lastMove && (square === lastMove.from || square === lastMove.to),
                 'in-check-square': kingInCheck && kingInCheck === square,
+                'hint-highlight': hint && (square === hint.from || square === hint.to),
               })}
             >
               {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} />}

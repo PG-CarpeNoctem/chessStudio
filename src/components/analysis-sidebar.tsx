@@ -12,7 +12,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Users, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
 
-type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn'> & {
+type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver'> & {
   className?: string;
 };
 
@@ -63,7 +63,7 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
 };
 
 
-export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className }: AnalysisSidebarProps) {
+export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -125,6 +125,24 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
       </Card>
       
       <PlayerCard name="PlayerOne" avatarSrc="https://placehold.co/40x40.png" />
+      
+      <Card className="bg-sidebar-accent border-sidebar-border">
+        <CardHeader className='pb-3 pt-4'>
+            <CardTitle className="flex items-center gap-2 text-base"><Lightbulb /> Coaching</CardTitle>
+        </CardHeader>
+        <CardContent className='p-3 pt-0'>
+            <Button 
+            onClick={getHint} 
+            disabled={isAITurn || !!gameOver} 
+            className="w-full"
+            variant="outline"
+            >
+            <Lightbulb className="mr-2 h-4 w-4" />
+            Get a Hint
+            </Button>
+        </CardContent>
+      </Card>
+
 
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardContent className='p-3'>

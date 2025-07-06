@@ -21,6 +21,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [redoStack, setRedoStack] = useState<ChessMove[]>([]);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
+  const [hint, setHint] = useState<ChessMove | null>(null);
 
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
@@ -72,6 +73,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
         setGame(gameCopy);
         updateGameState(gameCopy);
         setRedoStack([]); // Clear redo stack on new move
+        setHint(null); // Clear hint on new move
         return true;
       }
     } catch (e) {
@@ -151,6 +153,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setPossibleMoves([]);
     setIsAITurn(false);
     setRedoStack([]);
+    setHint(null);
   }, [updateGameState]);
 
   const undoMove = useCallback(() => {
@@ -160,6 +163,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
       setGame(gameCopy);
       updateGameState(gameCopy);
       setRedoStack((prev) => [undoneMove, ...prev]);
+      setHint(null);
     }
   }, [game, updateGameState]);
 
@@ -172,9 +176,45 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
         setGame(gameCopy);
         updateGameState(gameCopy);
         setRedoStack((prev) => prev.slice(1));
+        setHint(null);
       }
     }
   }, [redoStack, game, updateGameState]);
+
+  const getHint = useCallback(async () => {
+    if (game.isGameOver() || isAITurn) return;
+
+    toast({
+      title: 'Thinking...',
+      description: 'The AI is analyzing the board for a hint.',
+    });
+    
+    try {
+      const { suggestedMove, explanation } = await suggestMove({
+        boardStateFen: game.fen(),
+        skillLevel: 20, // Use max skill for the best possible hint
+      });
+
+      // suggestedMove is in SAN format (e.g., "Nf3")
+      const moveDetails = game.moves({ verbose: true }).find(m => m.san === suggestedMove);
+
+      if (moveDetails) {
+        setHint(moveDetails);
+        toast({
+          title: 'Hint: ' + moveDetails.san,
+          description: explanation,
+        });
+      } else {
+        throw new Error("AI suggested an invalid move.");
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Hint Failed',
+        description: 'Could not get a hint at this time.',
+      });
+    }
+  }, [game, toast, isAITurn]);
 
 
   const flipBoard = useCallback(() => {
@@ -224,5 +264,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setGameMode,
     timeControl,
     setTimeControl,
+    hint,
+    getHint,
   };
 };
