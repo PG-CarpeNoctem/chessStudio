@@ -18,9 +18,11 @@ export function ChessBoard({
   boardTheme,
   showPossibleMoves,
   showLastMoveHighlight,
+  boardOrientation,
+  pieceSet,
 }: ChessBoardProps) {
   const boardLayout = useMemo(() => {
-    const squares = [];
+    const squares: ChessSquare[] = [];
     for (let i = 0; i < 8; i++) {
       for (let j = 0; j < 8; j++) {
         const row = 8 - i;
@@ -29,8 +31,11 @@ export function ChessBoard({
         squares.push(square);
       }
     }
+    if (boardOrientation === 'b') {
+      return squares.reverse();
+    }
     return squares;
-  }, []);
+  }, [boardOrientation]);
 
   return (
     <div className="chess-board" data-theme={boardTheme}>
@@ -53,7 +58,7 @@ export function ChessBoard({
               'in-check-square': kingInCheck && kingInCheck === square,
             })}
           >
-            {piece && <ChessPieceDisplay piece={piece.piece} />}
+            {piece && <ChessPieceDisplay piece={piece.piece} pieceSet={pieceSet} />}
             {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}
           </div>
         );

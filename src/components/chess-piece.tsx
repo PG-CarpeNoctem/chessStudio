@@ -1,24 +1,44 @@
 import { cn } from '@/lib/utils';
-import type { ChessPiece as PieceType } from '@/lib/types';
+import type { ChessPiece as PieceType, PieceSet } from '@/lib/types';
 import Image from 'next/image';
 
 interface PieceProps {
   piece: PieceType;
+  pieceSet: PieceSet;
   className?: string;
 }
 
-const PIECE_IMAGE_MAP: Record<PieceType['type'], { hint: string }> = {
-  p: { hint: 'pawn' },
-  r: { hint: 'rook' },
-  n: { hint: 'knight' },
-  b: { hint: 'bishop' },
-  q: { hint: 'queen' },
-  k: { hint: 'king' },
+const PIECE_IMAGE_HINTS: Record<PieceSet, Record<PieceType['type'], { hint: string }>> = {
+  classic: {
+    p: { hint: 'pawn' },
+    r: { hint: 'rook' },
+    n: { hint: 'knight' },
+    b: { hint: 'bishop' },
+    q: { hint: 'queen' },
+    k: { hint: 'king' },
+  },
+  alpha: {
+    p: { hint: 'alpha pawn' },
+    r: { hint: 'alpha rook' },
+    n: { hint: 'alpha knight' },
+    b: { hint: 'alpha bishop' },
+    q: { hint: 'alpha queen' },
+    k: { hint: 'alpha king' },
+  },
+  merida: {
+    p: { hint: 'merida pawn' },
+    r: { hint: 'merida rook' },
+    n: { hint: 'merida knight' },
+    b: { hint: 'merida bishop' },
+    q: { hint: 'merida queen' },
+    k: { hint: 'merida king' },
+  },
 };
 
-export function ChessPieceDisplay({ piece, className }: PieceProps) {
+
+export function ChessPieceDisplay({ piece, pieceSet, className }: PieceProps) {
   const pieceColor = piece.color === 'w' ? 'white' : 'black';
-  const pieceInfo = PIECE_IMAGE_MAP[piece.type];
+  const pieceInfo = PIECE_IMAGE_HINTS[pieceSet]?.[piece.type] || PIECE_IMAGE_HINTS.classic[piece.type];
   const hint = `${pieceColor} ${pieceInfo.hint}`;
   
   // Using a generic placeholder for all pieces. 

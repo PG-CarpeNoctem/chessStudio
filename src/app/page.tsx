@@ -31,7 +31,7 @@ export default function Home() {
         </Sidebar>
         <SidebarInset>
           <main className="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
-            <div className="w-full max-w-[calc(100vh-10rem)]">
+            <div className="w-full max-w-[calc(100vh-10rem)] aspect-square">
               <ChessBoard {...game} />
             </div>
           </main>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -22,6 +22,8 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
   const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
+  const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
+  const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
 
   const { toast } = useToast();
 
@@ -144,6 +146,10 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setIsAITurn(false);
   }, [updateGameState]);
 
+  const flipBoard = useCallback(() => {
+    setBoardOrientation(prev => (prev === 'w' ? 'b' : 'w'));
+  }, []);
+
   const lastMove = useMemo(() => {
     const history = game.history({ verbose: true });
     return history.length > 0 ? history[history.length - 1] : null;
@@ -175,5 +181,9 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setShowPossibleMoves,
     showLastMoveHighlight,
     setShowLastMoveHighlight,
+    boardOrientation,
+    flipBoard,
+    pieceSet,
+    setPieceSet,
   };
 };

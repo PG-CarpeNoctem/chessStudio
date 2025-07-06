@@ -22,7 +22,7 @@ import { AuthButton } from './auth-button';
 import { analyzeGame } from '@/ai/flows/analyze-game';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Play, Settings } from 'lucide-react';
+import { BrainCircuit, Loader2, Play, RefreshCw, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from './ui/alert-dialog';
 import { Switch } from './ui/switch';
+import type { PieceSet } from '@/lib/types';
 
 type GameSidebarProps = ReturnType<typeof useChessGame>;
 
@@ -51,6 +52,9 @@ export function GameSidebar({
   setShowPossibleMoves,
   showLastMoveHighlight,
   setShowLastMoveHighlight,
+  flipBoard,
+  pieceSet,
+  setPieceSet,
 }: GameSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -118,6 +122,10 @@ export function GameSidebar({
             <Play className="mr-2 h-4 w-4" />
             New Game
           </Button>
+           <Button onClick={flipBoard}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Flip Board
+          </Button>
           <Separator />
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !pgn}>
             {isAnalyzing ? (
@@ -163,6 +171,19 @@ export function GameSidebar({
                       <SelectItem value="charcoal">Charcoal</SelectItem>
                   </SelectContent>
               </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="piece-set">Piece Set</Label>
+            <Select onValueChange={(value) => setPieceSet(value as PieceSet)} defaultValue={pieceSet}>
+              <SelectTrigger id="piece-set">
+                <SelectValue placeholder="Select piece set" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic">Classic</SelectItem>
+                <SelectItem value="alpha">Alpha</SelectItem>
+                <SelectItem value="merida">Merida</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center justify-between pt-2">
               <Label htmlFor="possible-moves" className="text-sm">Show Possible Moves</Label>
