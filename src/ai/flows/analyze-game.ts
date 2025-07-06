@@ -25,6 +25,7 @@ const AnalyzedMoveSchema = z.object({
   san: z.string().describe("The move in Standard Algebraic Notation (e.g., e4, Nf3)."),
   classification: z.enum(['Brilliant', 'Great', 'Excellent', 'Good', 'Book', 'Mistake', 'Blunder', 'Inaccuracy']).describe("The classification of the move."),
   explanation: z.string().describe("An explanation for why the move was classified this way."),
+  evaluation: z.number().describe("The centipawn evaluation of the position after the move. Positive is good for White, negative for Black."),
 });
 
 const AnalyzeGameOutputSchema = z.object({
@@ -52,7 +53,7 @@ const prompt = ai.definePrompt({
 - **Mistake (??)**: A bad move that significantly worsens the position, such as losing material or a major positional advantage.
 - **Blunder (???)**: A very bad move that leads to a losing position, such as losing the queen or getting checkmated.
 
-For each move in the PGN, provide its number, the player, the move in SAN, your classification, and a concise explanation (1-2 sentences).
+For each move in the PGN, provide its number, the player, the move in SAN, your classification, a concise explanation (1-2 sentences), and the centipawn evaluation of the position *after* the move. The evaluation should be from White's perspective (positive values favor White, negative values favor Black).
 
 PGN: {{{pgn}}}
 Skill Level: {{{skillLevel}}} (Tailor the depth of your explanations to this level).

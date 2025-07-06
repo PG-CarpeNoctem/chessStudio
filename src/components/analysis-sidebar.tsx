@@ -29,6 +29,9 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
 import { ChessPieceDisplay } from './chess-piece';
 import type { ChessPiece } from '@/lib/types';
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
+
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 'capturedPieces' | 'materialAdvantage' | 'time' | 'turn'> & {
   className?: string;
@@ -86,6 +89,13 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
   Mistake: { icon: AlertCircle, className: 'text-orange-500' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600' },
 };
+
+const chartConfig = {
+  evaluation: {
+    label: "Evaluation",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
 
 
 export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, capturedPieces, materialAdvantage, time, turn, className }: AnalysisSidebarProps) {
@@ -219,13 +229,64 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
       </Card>
 
       <AlertDialog open={!!analysis} onOpenChange={(open) => !open && setAnalysis(null)}>
-        <AlertDialogContent className="max-w-xl h-[60vh] flex flex-col">
+        <AlertDialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
             <AlertDialogDescription>
               {analysis?.summary}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {analysis && analysis.analysis.length > 0 && (
+            <div className="h-48 w-full -mx-6 pr-8 text-xs">
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <LineChart
+                  accessibilityLayer
+                  data={analysis.analysis.map((d, i) => ({ ...d, fullMoveNumber: Math.floor(i / 2) + 1 }))}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="fullMoveNumber"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                      tickFormatter={(value) => `${(Number(value) / 100).toFixed(1)}`}
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      width={35}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                  <ChartTooltip
+                      cursor={true}
+                      content={<ChartTooltipContent
+                          formatter={(value) => `Eval: ${(Number(value) / 100).toFixed(2)}`}
+                          labelFormatter={(_, payload) => {
+                              const move = payload?.[0]?.payload;
+                              if (move) {
+                                  return `${move.moveNumber}${move.player === 'White' ? '.' : '...'} ${move.san}`;
+                              }
+                              return '';
+                          }}
+                          indicator="line"
+                      />}
+                  />
+                  <Line
+                    dataKey="evaluation"
+                    type="monotone"
+                    stroke="var(--color-evaluation)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </div>
+          )}
+
           <Separator />
           <ScrollArea className="flex-1 -mx-6">
              <div className="flex flex-col gap-1 px-6">
