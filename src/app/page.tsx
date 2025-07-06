@@ -5,11 +5,20 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, Crown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function Home() {
   const game = useChessGame();
@@ -25,6 +34,25 @@ export default function Home() {
       setIsAuthenticating(false);
     }
   }, [router]);
+
+  const getGameOverMessage = () => {
+    if (!game.gameOver) return { title: '', description: '' };
+    const { status, winner } = game.gameOver;
+    switch (status) {
+      case 'Checkmate':
+        return { title: 'Checkmate!', description: `${winner} wins the game.` };
+      case 'Draw':
+        return { title: 'Draw', description: 'The game is a draw by agreement.' };
+      case 'Stalemate':
+        return { title: 'Stalemate!', description: 'The game is a draw by stalemate.' };
+      case 'Threefold Repetition':
+        return { title: 'Draw', description: 'The game is a draw by threefold repetition.' };
+      default:
+        return { title: 'Game Over', description: 'The game has ended.' };
+    }
+  };
+
+  const { title: gameOverTitle, description: gameOverDescription } = getGameOverMessage();
 
   if (isAuthenticating) {
     return (
@@ -66,6 +94,26 @@ export default function Home() {
         <div className="w-full max-w-[calc(100vh-2rem)] aspect-square">
           <ChessBoard {...game} />
         </div>
+
+        <AlertDialog open={!!game.gameOver}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <Crown className="w-6 h-6 text-yellow-400" />
+                        {gameOverTitle}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {gameOverDescription}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={game.resetGame}>
+                        Play Again
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </main>
       <AnalysisSidebar {...game} className="hidden md:flex" />
     </div>
