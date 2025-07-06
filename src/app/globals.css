@@ -84,6 +84,28 @@
   }
 }
 
+.chess-board-container {
+  @apply relative w-full aspect-square;
+}
+
+.chess-board-coordinates {
+  @apply absolute text-xs font-semibold text-muted-foreground pointer-events-none;
+}
+
+.files-container {
+    @apply bottom-[-1rem] left-0 right-0 h-4 flex;
+}
+.files-container span {
+    @apply flex-1 text-center;
+}
+
+.ranks-container {
+    @apply left-[-1.25rem] top-0 bottom-0 w-4 flex flex-col;
+}
+.ranks-container span {
+    @apply flex-1 flex items-center justify-end;
+}
+
 .chess-board {
   @apply grid grid-cols-8 grid-rows-8 aspect-square shadow-2xl rounded-lg overflow-hidden;
 }
@@ -163,16 +185,10 @@
 
 /* Custom Theme */
 .chess-board[data-theme='custom'] .board-square.light {
-  background-color: var(--custom-light-square, #ebebd0);
+  background-color: var(--custom-board-light, #ebebd0);
 }
 .chess-board[data-theme='custom'] .board-square.dark {
-  background-color: var(--custom-dark-square, #779556);
-}
-.dark .chess-board[data-theme='custom'] .board-square.light {
-  background-color: var(--custom-light-square, #ebebd0);
-}
-.dark .chess-board[data-theme='custom'] .board-square.dark {
-  background-color: var(--custom-dark-square, #779556);
+  background-color: var(--custom-board-dark, #779556);
 }
 
 .chess-piece {
@@ -191,17 +207,38 @@
   @apply absolute w-1/3 h-1/3 rounded-full bg-primary/50 pointer-events-none;
 }
 
+/* Default highlights for non-custom themes */
 .last-move-highlight {
   @apply bg-primary/20;
 }
-
 .selected-square {
   @apply bg-primary/40;
 }
-
 .in-check-square {
   background: radial-gradient(circle, rgba(255,0,0,0.5) 0%, rgba(255,0,0,0) 70%);
 }
+
+/* Custom theme highlight overrides */
+.chess-board[data-theme='custom'] .last-move-highlight,
+.chess-board[data-theme='custom'] .selected-square {
+  background-color: transparent; /* Reset default single color */
+}
+.chess-board[data-theme='custom'] .board-square.light.last-move-highlight {
+  background-color: var(--custom-previous-1, #ffff00);
+}
+.chess-board[data-theme='custom'] .board-square.dark.last-move-highlight {
+  background-color: var(--custom-previous-2, #d4c24a);
+}
+.chess-board[data-theme='custom'] .board-square.light.selected-square {
+  background-color: var(--custom-selected-1, #91e086);
+}
+.chess-board[data-theme='custom'] .board-square.dark.selected-square {
+  background-color: var(--custom-selected-2, #75b56b);
+}
+.chess-board[data-theme='custom'] .in-check-square {
+  background: radial-gradient(circle, var(--custom-check-1, rgba(239, 118, 118, 0.8)) 0%, var(--custom-check-2, rgba(212, 73, 73, 0.4)) 70%);
+}
+
 
 .hint-highlight {
   @apply bg-green-500/30;

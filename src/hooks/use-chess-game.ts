@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -29,6 +29,21 @@ const getSetting = <T,>(key: string, defaultValue: T): T => {
     } catch {
         return defaultValue;
     }
+};
+
+const defaultCustomColors: CustomColors = {
+  boardLight: '#f0d9b5',
+  boardDark: '#b58863',
+  pieceWhiteFill: '#ffffff',
+  pieceWhiteStroke: '#333333',
+  pieceBlackFill: '#333333',
+  pieceBlackStroke: '#ffffff',
+  check1: '#ef7676',
+  check2: '#d44949',
+  previous1: '#fff078',
+  previous2: '#d4c24a',
+  selected1: '#91e086',
+  selected2: '#75b56b',
 };
 
 export const useChessGame = () => {
@@ -62,8 +77,8 @@ export const useChessGame = () => {
   const [showPossibleMoves, setShowPossibleMoves] = useState(() => getSetting('chess:showPossibleMoves', true));
   const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(() => getSetting('chess:showLastMoveHighlight', true));
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
-  const [customBoardColors, setCustomBoardColors] = useState(() => getSetting('chess:customBoardColors', { light: '#ebebd0', dark: '#779556' }));
-  const [customPieceColors, setCustomPieceColors] = useState(() => getSetting('chess:customPieceColors', { whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' }));
+  const [customColors, setCustomColors] = useState<CustomColors>(() => getSetting('chess:customColors', defaultCustomColors));
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(() => getSetting('chess:showCoordinates', true));
 
   const updateGameState = useCallback(() => {
     const g = gameRef.current;
@@ -308,8 +323,8 @@ export const useChessGame = () => {
         };
         updateState('chess:boardTheme', setBoardTheme);
         updateState('chess:pieceSet', setPieceSet);
-        updateState('chess:customBoardColors', setCustomBoardColors);
-        updateState('chess:customPieceColors', setCustomPieceColors);
+        updateState('chess:customColors', setCustomColors);
+        updateState('chess:showCoordinates', setShowCoordinates);
         updateState('chess:showPossibleMoves', setShowPossibleMoves);
         updateState('chess:showLastMoveHighlight', setShowLastMoveHighlight);
     };
@@ -405,7 +420,8 @@ export const useChessGame = () => {
 
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
-    customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors,
+    customColors, setCustomColors,
+    showCoordinates, setShowCoordinates,
     handlePieceDrop
   };
 };
