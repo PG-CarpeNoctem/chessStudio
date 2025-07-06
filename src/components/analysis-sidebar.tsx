@@ -12,7 +12,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeGame } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2 } from 'lucide-react';
+import { BrainCircuit, Loader2, Users } from 'lucide-react';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -25,10 +25,31 @@ import {
 } from './ui/alert-dialog';
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Separator } from './ui/separator';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn'> & {
   className?: string;
 };
+
+const PlayerCard = ({ name, avatarSrc, isOpponent = false }: { name: string, avatarSrc: string, isOpponent?: boolean }) => (
+  <Card className="bg-sidebar-accent border-sidebar-border">
+    <CardContent className="p-3">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={avatarSrc} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
+            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <span className="font-semibold">{name}</span>
+        </div>
+        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1">
+          10:00
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
@@ -53,14 +74,50 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
       setIsAnalyzing(false);
     }
   };
+
+  const movePairs: [any, any | undefined][] = [];
+  for (let i = 0; i < history.length; i += 2) {
+    movePairs.push([history[i], history[i + 1]]);
+  }
   
   return (
-    <aside className={cn("w-64 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
-      <Card className="bg-sidebar-accent border-sidebar-border">
-        <CardHeader>
-          <CardTitle>Game Analysis</CardTitle>
+    <aside className={cn("w-72 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
+      <PlayerCard name="AI Opponent" avatarSrc="https://placehold.co/40x40.png" isOpponent={true} />
+      
+      <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
+        <CardHeader className='pb-2'>
+          <CardTitle className="flex items-center justify-between text-base">
+            Move History
+            {isAITurn && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <table className="move-history-table">
+              <tbody>
+                {movePairs.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-muted-foreground p-4">No moves yet.</td>
+                  </tr>
+                ) : (
+                  movePairs.map((pair, index) => (
+                    <tr key={index}>
+                      <td className="move-number">{index + 1}.</td>
+                      <td className="move-san">{pair[0]?.san}</td>
+                      <td className="move-san">{pair[1]?.san}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+      
+      <PlayerCard name="PlayerOne" avatarSrc="https://placehold.co/40x40.png" />
+
+      <Card className="bg-sidebar-accent border-sidebar-border">
+        <CardContent className='p-3'>
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !pgn} className="w-full">
             {isAnalyzing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -69,35 +126,6 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
             )}
             Analyze Game
           </Button>
-        </CardContent>
-      </Card>
-      
-      <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Move History
-            {isAITurn && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 text-sm pr-4">
-              {history.length === 0 ? (
-                <p className="col-span-3 text-muted-foreground">No moves yet.</p>
-              ) : (
-                history.map((move, index) =>
-                  index % 2 === 0 ? (
-                    <React.Fragment key={move.san}>
-                      <div className="font-bold text-right">{index / 2 + 1}.</div>
-                      <div>{move.san}</div>
-                    </React.Fragment>
-                  ) : (
-                    <div key={move.san}>{move.san}</div>
-                  )
-                )
-              )}
-            </div>
-          </ScrollArea>
         </CardContent>
       </Card>
 

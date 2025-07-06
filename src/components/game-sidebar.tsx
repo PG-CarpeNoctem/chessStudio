@@ -20,10 +20,10 @@ import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users } from 'lucide-react';
+import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
-import type { PieceSet } from '@/lib/types';
+import type { PieceSet, TimeControl } from '@/lib/types';
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +50,8 @@ export function GameSidebar({
   canRedo,
   gameMode,
   setGameMode,
+  timeControl,
+  setTimeControl,
   className,
 }: GameSidebarProps) {
   const { toast } = useToast();
@@ -72,7 +74,7 @@ export function GameSidebar({
   };
 
   return (
-    <aside className={cn("w-64 flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
+    <aside className={cn("w-72 flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle className="font-headline text-2xl text-primary">
@@ -118,6 +120,22 @@ export function GameSidebar({
           <CardTitle className="flex items-center gap-2"><Settings /> Settings</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <div className="space-y-2">
+              <Label htmlFor="time-control" className='flex items-center gap-2'><Clock/>Time Control</Label>
+              <Select onValueChange={(value) => setTimeControl(value as TimeControl)} defaultValue={timeControl}>
+                  <SelectTrigger id="time-control">
+                      <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="1+0">1+0 • Bullet</SelectItem>
+                      <SelectItem value="3+0">3+0 • Blitz</SelectItem>
+                      <SelectItem value="5+3">5+3 • Blitz</SelectItem>
+                      <SelectItem value="10+0">10+0 • Rapid</SelectItem>
+                      <SelectItem value="15+10">15+10 • Rapid</SelectItem>
+                      <SelectItem value="unlimited">Unlimited</SelectItem>
+                  </SelectContent>
+              </Select>
+          </div>
            <div className="flex items-center justify-between pt-2">
             <Label htmlFor="game-mode" className="flex items-center gap-2 text-sm">
               {gameMode === 'ai' ? <Bot /> : <Users />}

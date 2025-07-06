@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -20,6 +20,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
   const [redoStack, setRedoStack] = useState<ChessMove[]>([]);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
+  const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
 
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
@@ -221,5 +222,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     canRedo: redoStack.length > 0,
     gameMode,
     setGameMode,
+    timeControl,
+    setTimeControl,
   };
 };

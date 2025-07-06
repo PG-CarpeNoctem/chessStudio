@@ -184,3 +184,21 @@
 .in-check-square {
   background: radial-gradient(circle, rgba(255,0,0,0.5) 0%, rgba(255,0,0,0) 70%);
 }
+
+/* Move History Table Styles */
+.move-history-table {
+    @apply w-full text-sm text-center;
+}
+.move-history-table td,
+.move-history-table th {
+    @apply p-1;
+}
+.move-history-table tr:nth-child(even) {
+    @apply bg-sidebar-accent/50;
+}
+.move-history-table .move-number {
+    @apply font-bold text-right pr-2 text-muted-foreground;
+}
+.move-history-table .move-san {
+    @apply px-2;
+}
