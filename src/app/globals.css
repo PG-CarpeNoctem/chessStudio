@@ -84,7 +84,7 @@
 }
 
 .chess-board {
-  @apply grid grid-cols-8 aspect-square shadow-2xl rounded-lg overflow-hidden;
+  @apply grid grid-cols-8 grid-rows-8 aspect-square shadow-2xl rounded-lg overflow-hidden;
 }
 .board-square {
   @apply w-full h-full flex justify-center items-center relative transition-colors duration-200;

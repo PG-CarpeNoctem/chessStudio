@@ -9,6 +9,9 @@ export default {
   ],
   theme: {
     extend: {
+      gridTemplateRows: {
+        '8': 'repeat(8, minmax(0, 1fr))',
+      },
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Caveat', 'cursive'],
