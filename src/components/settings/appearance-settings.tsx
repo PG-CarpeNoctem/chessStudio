@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -76,17 +76,29 @@ const pieceSets = ['classic', 'alpha', 'merida', 'neo'] as const;
 // --- Appearance Settings Component ---
 export function AppearanceSettings() {
     const { toast } = useToast();
-    const getInitialState = () => ({
-        boardTheme: getJsonSetting<BoardTheme>('chess:boardTheme', 'cyan'),
-        pieceSet: getJsonSetting<PieceSet>('chess:pieceSet', 'classic'),
-        showCoordinates: getJsonSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'),
-        showPossibleMoves: getJsonSetting<boolean>('chess:showPossibleMoves', true),
-        showLastMoveHighlight: getJsonSetting<boolean>('chess:showLastMoveHighlight', true),
-        customColors: getJsonSetting<CustomColors>('chess:customColors', defaultCustomColors),
-    });
+    
+    const [settings, setSettings] = useState(() => ({
+        boardTheme: 'cyan' as BoardTheme,
+        pieceSet: 'classic' as PieceSet,
+        showCoordinates: 'outside' as CoordinatesDisplay,
+        showPossibleMoves: true,
+        showLastMoveHighlight: true,
+        customColors: defaultCustomColors,
+    }));
+    const [initialState, setInitialState] = useState(settings);
 
-    const [settings, setSettings] = useState(getInitialState);
-    const [initialState, setInitialState] = useState(getInitialState);
+    useEffect(() => {
+        const loadedSettings = {
+            boardTheme: getJsonSetting<BoardTheme>('chess:boardTheme', 'cyan'),
+            pieceSet: getJsonSetting<PieceSet>('chess:pieceSet', 'classic'),
+            showCoordinates: getJsonSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'),
+            showPossibleMoves: getJsonSetting<boolean>('chess:showPossibleMoves', true),
+            showLastMoveHighlight: getJsonSetting<boolean>('chess:showLastMoveHighlight', true),
+            customColors: getJsonSetting<CustomColors>('chess:customColors', defaultCustomColors),
+        };
+        setSettings(loadedSettings);
+        setInitialState(loadedSettings);
+    }, []);
 
     const handleSave = () => {
         Object.entries(settings).forEach(([key, value]) => {

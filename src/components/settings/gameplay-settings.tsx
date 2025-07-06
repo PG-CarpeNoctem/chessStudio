@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -49,14 +49,24 @@ const setJsonSetting = (key: string, value: any) => {
 export function GameplaySettings() {
   const { toast } = useToast();
   
-  const getInitialState = () => ({
-    autoPromoteTo: getJsonSetting<'q' | 'r' | 'b' | 'n'>('chess:autoPromoteTo', 'q'),
-    enablePremove: getJsonSetting<boolean>('chess:enablePremove', true),
-    confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
-  });
+  const defaultState = {
+    autoPromoteTo: 'q' as 'q' | 'r' | 'b' | 'n',
+    enablePremove: true,
+    confirmMove: false,
+  };
 
-  const [settings, setSettings] = useState(getInitialState);
-  const [initialState, setInitialState] = useState(getInitialState);
+  const [settings, setSettings] = useState(defaultState);
+  const [initialState, setInitialState] = useState(defaultState);
+
+  useEffect(() => {
+      const loadedSettings = {
+        autoPromoteTo: getJsonSetting<'q' | 'r' | 'b' | 'n'>('chess:autoPromoteTo', 'q'),
+        enablePremove: getJsonSetting<boolean>('chess:enablePremove', true),
+        confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
+      };
+      setSettings(loadedSettings);
+      setInitialState(loadedSettings);
+  }, []);
 
   const handleSave = () => {
     Object.entries(settings).forEach(([key, value]) => {
