@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils';
-import type { ChessPiece as PieceType, PieceSet, BoardTheme, CustomColors } from '@/lib/types';
+import type { ChessPiece as PieceType, PieceSet } from '@/lib/types';
 
 const PIECE_SETS: Record<PieceSet, Record<PieceType['type'], string>> = {
   classic: {
@@ -37,24 +37,15 @@ const PIECE_SETS: Record<PieceSet, Record<PieceType['type'], string>> = {
   }
 };
 
-const PieceSvg = ({ type, color, pieceSet, boardTheme, customColors }: { type: PieceType['type']; color: PieceType['color'], pieceSet: PieceSet, boardTheme: BoardTheme, customColors: CustomColors }) => {
+const PieceSvg = ({ type, color, pieceSet }: { type: PieceType['type']; color: PieceType['color'], pieceSet: PieceSet }) => {
     const path = PIECE_SETS[pieceSet]?.[type] || PIECE_SETS['classic'][type];
 
-    // Default colors
-    const whiteFillDefault = pieceSet === 'classic' ? '#FFFFFF' : '#F8F8F8';
-    const whiteStrokeDefault = pieceSet === 'classic' ? '#2F2F2F' : '#464646';
-    const blackFillDefault = pieceSet === 'classic' ? '#3C3C3C' : '#2F2F2F';
-    const blackStrokeDefault = '#000000';
-
-    let fill, stroke;
-
-    if (boardTheme === 'custom') {
-        fill = color === 'w' ? customColors.pieceWhiteFill : customColors.pieceBlackFill;
-        stroke = color === 'w' ? customColors.pieceWhiteStroke : customColors.pieceBlackStroke;
-    } else {
-        fill = color === 'b' ? blackFillDefault : whiteFillDefault;
-        stroke = color === 'b' ? blackStrokeDefault : whiteStrokeDefault;
-    }
+    const fill = color === 'b' 
+        ? 'var(--custom-piece-black-fill, #3C3C3C)' 
+        : 'var(--custom-piece-white-fill, #FFFFFF)';
+    const stroke = color === 'b' 
+        ? 'var(--custom-piece-black-stroke, #000000)' 
+        : 'var(--custom-piece-white-stroke, #2F2F2F)';
 
     return (
         <svg viewBox="0 0 45 45" className="w-full h-full">
@@ -77,16 +68,14 @@ const PieceSvg = ({ type, color, pieceSet, boardTheme, customColors }: { type: P
 interface PieceProps {
   piece: PieceType;
   pieceSet: PieceSet;
-  boardTheme: BoardTheme;
-  customColors: CustomColors;
   className?: string;
   isDraggable?: boolean;
 }
 
-export function ChessPieceDisplay({ piece, pieceSet, boardTheme, customColors, className, isDraggable }: PieceProps) {
+export function ChessPieceDisplay({ piece, pieceSet, className, isDraggable }: PieceProps) {
   return (
     <div className={cn('chess-piece', className)} draggable={isDraggable}>
-      <PieceSvg type={piece.type} color={piece.color} pieceSet={pieceSet} boardTheme={boardTheme} customColors={customColors} />
+      <PieceSvg type={piece.type} color={piece.color} pieceSet={pieceSet} />
     </div>
   );
 }

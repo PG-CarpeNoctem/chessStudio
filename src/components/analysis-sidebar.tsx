@@ -27,6 +27,7 @@ type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>,
 };
 
 const formatTime = (ms: number) => {
+    if (ms === Infinity) return '∞';
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -199,5 +200,3 @@ export function AnalysisSidebar({
     </aside>
   )
 }
-
-    

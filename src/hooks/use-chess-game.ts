@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -70,6 +70,7 @@ export const useChessGame = () => {
   const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
+  const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
 
   // UI Settings from localStorage
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
@@ -78,9 +79,10 @@ export const useChessGame = () => {
   const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(() => getSetting('chess:showLastMoveHighlight', true));
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
   const [customColors, setCustomColors] = useState<CustomColors>(() => getSetting('chess:customColors', defaultCustomColors));
-  const [showCoordinates, setShowCoordinates] = useState<boolean>(() => getSetting('chess:showCoordinates', true));
+  const [showCoordinates, setShowCoordinates] = useState<CoordinatesDisplay>(() => getSetting('chess:showCoordinates', 'outside'));
   const [enablePremove, setEnablePremove] = useState<boolean>(() => getSetting('chess:enablePremove', true));
   const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>(() => getSetting('chess:autoPromoteTo', 'q'));
+  const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(() => getSetting('chess:confirmMove', false));
 
 
   const updateGameState = useCallback(() => {
@@ -192,6 +194,30 @@ export const useChessGame = () => {
     setPossibleMoves([]);
   };
 
+  const attemptMove = useCallback((move: { from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' }) => {
+      const gameCopy = new Chess(gameRef.current.fen());
+      const moveResult = gameCopy.move(move);
+
+      if (moveResult && confirmMoveEnabled) {
+          setPendingMove({ ...move, san: moveResult.san });
+      } else if (moveResult) {
+          makeMove(move);
+      }
+      resetMoveSelection();
+  }, [confirmMoveEnabled, makeMove]);
+
+  const confirmMove = useCallback(() => {
+    if (pendingMove) {
+        makeMove(pendingMove);
+        setPendingMove(null);
+    }
+  }, [pendingMove, makeMove]);
+
+  const cancelMove = useCallback(() => {
+      setPendingMove(null);
+  }, []);
+
+
   const handlePieceDrop = useCallback((from: ChessSquare, to: ChessSquare) => {
     if (isAITurn) {
       if (enablePremove) {
@@ -203,29 +229,24 @@ export const useChessGame = () => {
 
     if(gameOver) return;
     
-    const move = { from, to, promotion: autoPromoteTo };
-    makeMove(move);
-    resetMoveSelection();
-  }, [makeMove, gameOver, isAITurn, enablePremove, autoPromoteTo]);
+    attemptMove({ from, to, promotion: autoPromoteTo });
+  }, [isAITurn, enablePremove, gameOver, autoPromoteTo, attemptMove]);
 
   const resetGame = useCallback(() => {
     const g = new Chess();
-    if (gameMode === 'ai') {
-        const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'Player' : 'Player';
-        g.setHeader('White', username);
-        g.setHeader('Black', 'AI Opponent');
-    } else {
-        g.setHeader('White', 'Player 1');
-        g.setHeader('Black', 'Player 2');
-    }
+    const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'Player' : 'Player';
+    g.setHeader('White', username);
+    g.setHeader('Black', gameMode === 'ai' ? 'AI Opponent' : 'Player 2');
     g.setHeader('Date', new Date().toISOString().split('T')[0]);
     gameRef.current = g;
+
     const { initialTime } = parseTimeControl(timeControl);
     updateGameState();
     resetMoveSelection();
     setIsAITurn(false);
     setHint(null);
     setPremove(null);
+    setPendingMove(null);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl, gameMode]);
@@ -286,20 +307,7 @@ export const useChessGame = () => {
     }
 
     if (selectedSquare) {
-      const move = { from: selectedSquare, to: square, promotion: autoPromoteTo };
-      const isMoveSuccessful = makeMove(move);
-      
-      if (!isMoveSuccessful) {
-        const piece = g.get(square);
-        if (piece && piece.color === g.turn()) {
-          setSelectedSquare(square);
-          setPossibleMoves(g.moves({ square, verbose: true }));
-        } else {
-          resetMoveSelection();
-        }
-      } else {
-         resetMoveSelection();
-      }
+      attemptMove({ from: selectedSquare, to: square, promotion: autoPromoteTo });
     } else {
       const piece = g.get(square);
       if (piece && piece.color === g.turn()) {
@@ -307,7 +315,7 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, makeMove, gameOver, isAITurn, turn, enablePremove, autoPromoteTo]);
+  }, [selectedSquare, gameOver, isAITurn, turn, enablePremove, autoPromoteTo, attemptMove]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -339,7 +347,6 @@ export const useChessGame = () => {
                 try {
                     setter(JSON.parse(e.newValue));
                 } catch {
-                    // Fallback for non-JSON values
                     setter(e.newValue);
                 }
             }
@@ -352,6 +359,7 @@ export const useChessGame = () => {
         updateState('chess:showLastMoveHighlight', setShowLastMoveHighlight);
         updateState('chess:enablePremove', setEnablePremove);
         updateState('chess:autoPromoteTo', setAutoPromoteTo);
+        updateState('chess:confirmMove', setConfirmMoveEnabled);
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -447,6 +455,6 @@ export const useChessGame = () => {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
     customColors, setCustomColors,
     showCoordinates, setShowCoordinates,
-    handlePieceDrop
+    handlePieceDrop, pendingMove, confirmMove, cancelMove
   };
 };

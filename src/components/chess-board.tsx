@@ -4,17 +4,16 @@
 import { ChessPieceDisplay } from './chess-piece';
 import { cn } from '@/lib/utils';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import type { ChessSquare, CustomColors } from '@/lib/types';
+import type { ChessSquare, CustomColors, CoordinatesDisplay } from '@/lib/types';
 import React from 'react';
 
 type ChessBoardProps = Pick<ReturnType<typeof useChessGame>, 
   'board' | 'onSquareClick' | 'onSquareRightClick' | 'selectedSquare' | 'possibleMoves' | 'lastMove' | 'kingInCheck' |
   'boardTheme' | 'showPossibleMoves' | 'showLastMoveHighlight' | 'boardOrientation' | 'pieceSet' |
-  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' 
+  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' | 'showCoordinates'
 > & {
     isAITurn?: boolean;
     turn?: 'w' | 'b';
-    showCoordinates?: boolean;
 };
 
 
@@ -42,7 +41,7 @@ export function ChessBoard({
   const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = boardOrientation === 'w' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
 
-  const boardStyle = boardTheme === 'custom' ? {
+  const boardStyle = boardTheme === 'custom' && customColors ? {
     '--custom-board-light': customColors.boardLight,
     '--custom-board-dark': customColors.boardDark,
     '--custom-check-1': customColors.check1,
@@ -53,6 +52,13 @@ export function ChessBoard({
     '--custom-selected-2': customColors.selected2,
   } as React.CSSProperties : {};
   
+  const pieceStyle = boardTheme === 'custom' && customColors ? {
+      '--custom-piece-white-fill': customColors.pieceWhiteFill,
+      '--custom-piece-white-stroke': customColors.pieceWhiteStroke,
+      '--custom-piece-black-fill': customColors.pieceBlackFill,
+      '--custom-piece-black-stroke': customColors.pieceBlackStroke,
+  } : {};
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (onSquareRightClick) {
@@ -77,8 +83,8 @@ export function ChessBoard({
   };
 
   return (
-    <div className="chess-board-container">
-      {showCoordinates && (
+    <div className="chess-board-container" style={pieceStyle}>
+      {showCoordinates === 'outside' && (
         <>
           <div className="files-container" aria-hidden>
             {files.map(file => <span key={file}>{file}</span>)}
@@ -114,13 +120,15 @@ export function ChessBoard({
                   'premove-highlight': premove && (square === premove.from || square === premove.to),
                 })}
               >
+                {showCoordinates === 'inside' && file === files[0] && <span className="coordinate rank-coord">{rank}</span>}
+                {showCoordinates === 'inside' && rank === ranks[ranks.length-1] && <span className="coordinate file-coord">{file}</span>}
                 {pieceOnSquare && (
                   <div
                     draggable={isDraggable}
                     onDragStart={(e) => isDraggable && onDragStart(e, square)}
                     className="w-full h-full flex items-center justify-center"
                   >
-                    <ChessPieceDisplay piece={pieceOnSquare.piece} pieceSet={pieceSet} boardTheme={boardTheme} customColors={customColors} isDraggable={isDraggable} />
+                    <ChessPieceDisplay piece={pieceOnSquare.piece} pieceSet={pieceSet} isDraggable={isDraggable} />
                   </div>
                 )}
                 {showPossibleMoves && isPossibleMove && <div className="possible-move-dot" />}

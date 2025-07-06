@@ -5,7 +5,7 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2, Menu, Crown, Clock } from 'lucide-react';
+import { Loader2, Menu, Crown, Clock, ShieldQuestion } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -115,6 +116,26 @@ export default function Home() {
                     </Button>
                     <AlertDialogAction onClick={game.resetGame}>
                         Play Again
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!game.pendingMove} onOpenChange={(open!) => !open && game.cancelMove()}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <ShieldQuestion className="w-6 h-6 text-primary" />
+                        Confirm Move
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to play the move {game.pendingMove?.san}?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={game.cancelMove}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={game.confirmMove}>
+                        Confirm
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

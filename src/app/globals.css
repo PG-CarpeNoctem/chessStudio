@@ -88,6 +88,23 @@
   @apply relative w-full aspect-square;
 }
 
+.board-square .coordinate {
+    @apply absolute text-xs font-semibold text-muted-foreground/80 pointer-events-none;
+}
+.board-square.light .coordinate {
+    color: hsl(var(--primary) / 0.9);
+}
+.board-square.dark .coordinate {
+    color: hsl(var(--primary-foreground) / 0.7);
+}
+
+.board-square .file-coord {
+    @apply bottom-0 right-1;
+}
+.board-square .rank-coord {
+    @apply top-0 left-1;
+}
+
 .files-container {
     @apply absolute bottom-[-1.5rem] left-0 right-0 h-4 flex pointer-events-none;
 }
@@ -178,6 +195,23 @@
 .dark .chess-board[data-theme='charcoal'] .board-square.dark {
   background-color: #424242;
 }
+
+/* Marble Theme */
+.chess-board[data-theme='marble'] .board-square.light {
+    background-color: #ffffff;
+}
+.chess-board[data-theme='marble'] .board-square.dark {
+    background-color: #d1d1d1;
+}
+
+/* Walnut Theme */
+.chess-board[data-theme='walnut'] .board-square.light {
+    background-color: #f0e6d6;
+}
+.chess-board[data-theme='walnut'] .board-square.dark {
+    background-color: #8b4513;
+}
+
 
 /* Custom Theme */
 .chess-board[data-theme='custom'] .board-square.light {
