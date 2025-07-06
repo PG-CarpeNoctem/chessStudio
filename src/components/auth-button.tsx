@@ -8,7 +8,7 @@ import { Skeleton } from './ui/skeleton';
 import { useRouter } from 'next/navigation';
 
 export function AuthButton() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +23,18 @@ export function AuthButton() {
 
   const handleLogin = () => {
     router.push('/login');
+  }
+
+  if (isLoggedIn === undefined) {
+    return (
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </div>
+    );
   }
 
   if (isLoggedIn) {
