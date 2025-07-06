@@ -155,7 +155,7 @@ export function GameSidebar({
                         {gameMode === 'ai' && (
                             <div className="space-y-1">
                             <Label htmlFor="difficulty" className="text-xs">AI Difficulty</Label>
-                            <Select onValuechange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
+                            <Select onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
                                 <SelectTrigger id="difficulty" className="h-9">
                                 <SelectValue placeholder="Select difficulty" />
                                 </SelectTrigger>
@@ -191,8 +191,8 @@ export function GameSidebar({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="classic">Classic</SelectItem>
-                                <SelectItem value="alpha">Alpha (coming soon)</SelectItem>
-                                <SelectItem value="merida">Merida (coming soon)</SelectItem>
+                                <SelectItem value="alpha" disabled>Alpha (coming soon)</SelectItem>
+                                <SelectItem value="merida" disabled>Merida (coming soon)</SelectItem>
                             </SelectContent>
                             </Select>
                         </div>
