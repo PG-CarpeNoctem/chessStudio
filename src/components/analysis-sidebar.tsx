@@ -218,18 +218,17 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
               {analysis?.summary}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Separator />
+          <Separator className="my-4" />
           <ScrollArea className="h-[60vh] pr-4 -mx-2">
              <div className="flex flex-col gap-1 p-2">
                 {analysis?.analysis.map((move, index) => {
                   const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400' };
                   const Icon = style.icon;
                   return (
-                    <div key={index} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 p-2 rounded-md hover:bg-accent/50">
-                      <div className="flex items-center gap-3 col-start-1">
-                         <span className="font-mono text-sm text-muted-foreground w-8 text-right">{move.moveNumber}.</span>
-                         <span className="text-xl">{move.player === 'White' ? '⚪' : '⚫'}</span>
-                         <span className="font-bold text-base text-foreground w-16">{move.san}</span>
+                    <div key={index} className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1 p-2.5 rounded-md hover:bg-accent/50">
+                      <div className="flex items-center gap-3 col-start-1 row-span-2 place-self-center">
+                         <span className="font-mono text-sm text-muted-foreground w-8 text-right">{move.moveNumber}{move.player === 'White' ? '.' : '...'}</span>
+                         <span className="font-bold text-lg text-foreground w-20">{move.san}</span>
                       </div>
                       <div className="flex items-center gap-2 col-start-2">
                         <Icon className={cn("h-5 w-5", style.className)} />
