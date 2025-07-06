@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Chess } from 'lucide-react';
+import { Puzzle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +33,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-2">
-            <Chess className="h-8 w-8 text-primary" />
+            <Puzzle className="h-8 w-8 text-primary" />
             <CardTitle className="text-3xl font-headline">PGChess</CardTitle>
           </div>
           <CardDescription>Enter your credentials to play.</CardDescription>
