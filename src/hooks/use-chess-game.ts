@@ -42,6 +42,7 @@ const parseTimeControl = (timeControl: TimeControl) => {
 
 export const useChessGame = () => {
   const [game, setGame] = useState(new Chess());
+  const [history, setHistory] = useState<ChessMove[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
@@ -136,7 +137,7 @@ export const useChessGame = () => {
     } else {
         setGameOver(null);
     }
-  }, [setCapturedPieces, setMaterialAdvantage, setTimerOn, setGameOver]);
+  }, []);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     const gameCopy = new Chess(game.fen());
@@ -150,6 +151,7 @@ export const useChessGame = () => {
         }
 
         setGame(gameCopy);
+        setHistory(gameCopy.history({ verbose: true }));
         updateGameState(gameCopy);
         setRedoStack([]);
         setHint(null);
@@ -160,8 +162,23 @@ export const useChessGame = () => {
       return false;
     }
     return false;
-  }, [game, updateGameState, timeControl, timerOn, setTime, setGame, setRedoStack, setHint, setTimerOn]);
+  }, [game, updateGameState, timeControl, timerOn]);
 
+
+  const resetGame = useCallback(() => {
+    const newGame = new Chess();
+    const { initialTime } = parseTimeControl(timeControl);
+    setGame(newGame);
+    setHistory([]);
+    updateGameState(newGame);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+    setIsAITurn(false);
+    setRedoStack([]);
+    setHint(null);
+    setTime({ w: initialTime, b: initialTime });
+    setTimerOn(false);
+  }, [updateGameState, timeControl]);
 
   useEffect(() => {
     if (gameMode === 'ai' && game.turn() === 'b' && !game.isGameOver()) {
@@ -220,20 +237,6 @@ export const useChessGame = () => {
     }
   }, [selectedSquare, game, makeMove, gameMode, gameOver, isAITurn]);
 
-  const resetGame = useCallback(() => {
-    const newGame = new Chess();
-    const { initialTime } = parseTimeControl(timeControl);
-    setGame(newGame);
-    updateGameState(newGame);
-    setSelectedSquare(null);
-    setPossibleMoves([]);
-    setIsAITurn(false);
-    setRedoStack([]);
-    setHint(null);
-    setTime({ w: initialTime, b: initialTime });
-    setTimerOn(false);
-  }, [updateGameState, timeControl]);
-
   const undoMove = useCallback(() => {
     if (game.history().length === 0) return;
     
@@ -250,6 +253,7 @@ export const useChessGame = () => {
       }
 
       setGame(gameCopy);
+      setHistory(gameCopy.history({ verbose: true }));
       updateGameState(gameCopy);
       setHint(null);
     }
@@ -270,6 +274,7 @@ export const useChessGame = () => {
       }
 
       setGame(gameCopy);
+      setHistory(gameCopy.history({ verbose: true }));
       updateGameState(gameCopy);
       setHint(null);
     }
@@ -287,7 +292,7 @@ export const useChessGame = () => {
     const interval = setInterval(() => {
       const currentTurn = game.turn();
       setTime(prev => {
-        const newTimeForPlayer = prev[currentTurn] - 1000;
+        const newTimeForPlayer = prev[currentTurn] - 100;
         if (newTimeForPlayer <= 0) {
           clearInterval(interval);
           setGameOver({ status: 'Timeout', winner: currentTurn === 'w' ? 'Black' : 'White' });
@@ -295,10 +300,10 @@ export const useChessGame = () => {
         }
         return { ...prev, [currentTurn]: newTimeForPlayer };
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, game, timeControl, setGameOver]);
+  }, [timerOn, gameOver, game, timeControl]);
 
 
   const getHint = useCallback(async () => {
@@ -342,9 +347,8 @@ export const useChessGame = () => {
   }, []);
 
   const lastMove = useMemo(() => {
-    const history = game.history({ verbose: true });
     return history.length > 0 ? history[history.length - 1] : null;
-  }, [game]);
+  }, [history]);
 
   const kingInCheck = useMemo(() => {
     if (!game.inCheck()) return null;
@@ -359,7 +363,7 @@ export const useChessGame = () => {
     selectedSquare,
     possibleMoves,
     resetGame,
-    history: game.history({ verbose: true }),
+    history,
     pgn: game.pgn(),
     isAITurn,
     lastMove,
@@ -379,7 +383,7 @@ export const useChessGame = () => {
     setPieceSet,
     undoMove,
     redoMove,
-    canUndo: game.history().length > 0,
+    canUndo: history.length > 0,
     canRedo: redoStack.length > 0,
     gameMode,
     setGameMode,
