@@ -51,23 +51,23 @@ function AnalysisPageComponent() {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
 
   const updateBoardAtMove = useCallback((index: number) => {
-    const newGame = new Chess();
-    if (analysis) {
-        newGame.load(analysis.pgn);
-        const history = newGame.history({ verbose: true });
-        
-        const gameAtMove = new Chess();
-        for (let i = 0; i <= index; i++) {
-          if (history[i]) {
-            gameAtMove.move(history[i].san);
-          }
-        }
-        
-        setGame(gameAtMove);
-        setBoard(gameAtMove.board().flat().filter(p => p !== null));
+    if (!analysis || !analysis.pgn) return;
+    
+    const gameForReplay = new Chess();
+    // Load the canonical PGN from the analysis result.
+    gameForReplay.load(analysis.pgn);
+    const history = gameForReplay.history({ verbose: true });
+    
+    const boardAtMove = new Chess();
+    for (let i = 0; i <= index; i++) {
+      if (history[i]) {
+        boardAtMove.move(history[i].san);
+      }
     }
+    
+    setGame(boardAtMove);
+    setBoard(boardAtMove.board().flat().filter(p => p !== null));
     setCurrentMoveIndex(index);
-
   }, [analysis]);
 
   useEffect(() => {
@@ -77,6 +77,9 @@ function AnalysisPageComponent() {
       setPgn(decodedPgn);
       handleAnalyze(decodedPgn);
     }
+  // handleAnalyze is a dependency, but including it causes an infinite loop.
+  // We only want this to run once when the PGN parameter changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleAnalyze = async (pgnToAnalyze: string) => {
@@ -91,23 +94,31 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
-      // Use chess.load() which is more robust than loadPgn() and can handle PGNs with slight format variations.
-      // It also attempts to load FENs, so we must check for a valid game history.
-      chess.load(pgnToAnalyze, { sloppy: true });
+      // chess.js `load` method attempts to load a PGN or a FEN.
+      // We check the return value to see if it was successful.
+      const loaded = chess.load(pgnToAnalyze, { sloppy: true });
       
-      if (chess.history().length === 0) {
-        // If no moves were loaded, the input was either an invalid PGN or just a FEN string.
-        // The analysis flow requires a full game with moves to provide a meaningful report.
-        throw new Error("Invalid PGN or a FEN string was provided. Full game analysis requires a PGN with moves.");
+      if (!loaded) {
+          // If it fails to load, it's likely an invalid PGN.
+          throw new Error("Invalid PGN. Please check the format and try again.");
       }
       
-      // Pass the standardized PGN from chess.js to the analysis flow
+      // If it loaded but there are no moves, it was a FEN string.
+      // The analysis flow requires a full game to provide a meaningful report.
+      if (chess.history().length === 0) {
+        throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
+      }
+      
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
-      updateBoardAtMove(result.analysis.length - 1); // Go to last move
+
+      const finalGame = new Chess();
+      finalGame.load(result.pgn);
+      updateBoardAtMove(finalGame.history().length - 1);
     } catch (e: any) {
-      setError(e.message || 'Failed to analyze game.');
-      toast({ variant: 'destructive', title: 'Analysis Failed', description: e.message || 'An unknown error occurred.' });
+      const errorMessage = e.message || 'An unknown error occurred.';
+      setError(errorMessage);
+      toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +127,7 @@ function AnalysisPageComponent() {
   const currentMoveData = analysis?.analysis[currentMoveIndex];
   
   const lastMoveForBoard = useMemo(() => {
-      if (!analysis || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
+      if (!analysis || !analysis.pgn || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
       
       const gameForMove = new Chess();
       gameForMove.load(analysis.pgn);

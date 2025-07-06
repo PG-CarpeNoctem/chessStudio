@@ -40,6 +40,7 @@ const MoveCountsSchema = z.object({
 });
 
 const AnalyzeGameOutputSchema = z.object({
+  pgn: z.string().describe("The PGN that was analyzed, returned for consistency."),
   summary: z.string().describe("A brief, high-level summary of the game's outcome and key turning points."),
   analysis: z.array(AnalyzedMoveSchema).describe("A detailed, move-by-move analysis of the game."),
   accuracies: z.object({
@@ -68,6 +69,7 @@ PGN: {{{pgn}}}
 Skill Level: {{{skillLevel}}} (Tailor the depth of your explanations to this level).
 
 Your output must be a JSON object that includes:
+0.  **pgn**: The exact PGN string you analyzed.
 1.  **summary**: A brief, high-level summary of the game's outcome and key turning points.
 2.  **analysis**: A detailed, move-by-move analysis. For each move in the PGN, provide its number, the player, the move in SAN, your classification, a concise explanation (1-2 sentences), and the centipawn evaluation of the position *after* the move. The evaluation should be from White's perspective (positive values favor White, negative values favor Black).
     Classify each move according to these categories:
