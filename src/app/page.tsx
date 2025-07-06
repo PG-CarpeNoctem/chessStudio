@@ -5,7 +5,7 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2, Menu, Crown } from 'lucide-react';
+import { Loader2, Menu, Crown, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -47,6 +47,8 @@ export default function Home() {
         return { title: 'Stalemate!', description: 'The game is a draw by stalemate.' };
       case 'Threefold Repetition':
         return { title: 'Draw', description: 'The game is a draw by threefold repetition.' };
+      case 'Timeout':
+        return { title: 'Timeout!', description: `${winner} wins on time.` };
       default:
         return { title: 'Game Over', description: 'The game has ended.' };
     }
@@ -99,7 +101,7 @@ export default function Home() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <Crown className="w-6 h-6 text-yellow-400" />
+                        {game.gameOver?.status === 'Timeout' ? <Clock className="w-6 h-6 text-orange-400" /> : <Crown className="w-6 h-6 text-yellow-400" />}
                         {gameOverTitle}
                     </AlertDialogTitle>
                     <AlertDialogDescription>

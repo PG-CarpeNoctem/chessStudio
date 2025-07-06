@@ -30,11 +30,18 @@ import { Separator } from './ui/separator';
 import { ChessPieceDisplay } from './chess-piece';
 import type { ChessPiece } from '@/lib/types';
 
-type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 'capturedPieces' | 'materialAdvantage'> & {
+type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 'capturedPieces' | 'materialAdvantage' | 'time' | 'turn'> & {
   className?: string;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0 }: { name: string, avatarSrc: string, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number }) => (
+const formatTime = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: number }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center">
@@ -62,7 +69,7 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
           </div>
         </div>
         <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1">
-          10:00
+          {formatTime(time)}
         </div>
       </div>
     </CardContent>
@@ -81,7 +88,7 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
 };
 
 
-export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, capturedPieces, materialAdvantage, className }: AnalysisSidebarProps) {
+export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, capturedPieces, materialAdvantage, time, turn, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -123,6 +130,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
         isOpponent={true} 
         capturedPieces={opponentCapturedPieces}
         materialAdvantage={opponentAdvantage}
+        time={time.b}
       />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
@@ -160,6 +168,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
         avatarSrc="https://placehold.co/40x40.png"
         capturedPieces={playerCapturedPieces}
         materialAdvantage={playerAdvantage}
+        time={time.w}
       />
       
       <Card className="bg-sidebar-accent border-sidebar-border">
