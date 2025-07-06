@@ -1,3 +1,4 @@
+
 import { cn } from '@/lib/utils';
 import type { ChessPiece as PieceType, PieceSet, BoardTheme } from '@/lib/types';
 
@@ -64,7 +65,6 @@ const PieceSvg = ({ type, color, pieceSet, boardTheme, customPieceColors }: { ty
             strokeLinejoin="round"
             style={{
                 filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.4))',
-                ...( (pieceSet === 'classic' && type === 'p' && color === 'b') && { transform: 'rotate(180deg)', transformOrigin: 'center' } ),
             }}
             >
             <path d={path} />

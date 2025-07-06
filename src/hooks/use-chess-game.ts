@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -252,7 +253,7 @@ export const useChessGame = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
+  // Robust timer effect
   useEffect(() => {
     if (!timerOn || gameOver || timeControl === 'unlimited') {
       return;
@@ -260,19 +261,21 @@ export const useChessGame = () => {
 
     const interval = setInterval(() => {
       const currentTurn = gameRef.current.turn();
-      setTime(prev => {
-        const newTimeForPlayer = prev[currentTurn] - 100;
+      setTime(prevTime => {
+        const newTimeForPlayer = prevTime[currentTurn] - 100;
+
         if (newTimeForPlayer <= 0) {
           clearInterval(interval);
           setGameOver({ status: 'Timeout', winner: currentTurn === 'w' ? 'Black' : 'White' });
-          return { ...prev, [currentTurn]: 0 };
+          setTimerOn(false);
+          return { ...prevTime, [currentTurn]: 0 };
         }
-        return { ...prev, [currentTurn]: newTimeForPlayer };
+        return { ...prevTime, [currentTurn]: newTimeForPlayer };
       });
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, turn, timeControl]);
+  }, [timerOn, gameOver, timeControl]);
 
 
   const getHint = useCallback(async () => {
@@ -309,7 +312,7 @@ export const useChessGame = () => {
         description: 'Could not get a hint at this time.',
       });
     }
-  }, [toast, isAITurn]);
+  }, [toast, isAITurn, pgn]);
 
 
   const flipBoard = useCallback(() => {
@@ -319,7 +322,7 @@ export const useChessGame = () => {
   const lastMove = useMemo(() => {
     const hist = gameRef.current.history({verbose: true});
     return hist.length > 0 ? hist[hist.length - 1] : null;
-  }, [pgn]); // pgn is a proxy for any change in game state
+  }, [pgn]);
 
   const kingInCheck = useMemo(() => {
     const g = gameRef.current;
