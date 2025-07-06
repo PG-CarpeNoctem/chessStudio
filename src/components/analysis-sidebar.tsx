@@ -10,31 +10,18 @@ import {
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb, ClipboardCopy } from 'lucide-react';
+import { BrainCircuit, Loader2, Lightbulb, ClipboardCopy } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './ui/alert-dialog';
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Separator } from './ui/separator';
-import { ChessPieceDisplay } from './chess-piece';
 import type { ChessPiece } from '@/lib/types';
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
-
+import Link from 'next/link';
+import { ChessPieceDisplay } from './chess-piece';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
-    'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'capturedPieces' | 'materialAdvantage' | 'time' | 'turn' | 'analysis' | 
-    'isAnalyzing' | 'analyzeCurrentGame' | 'clearAnalysis'
+    'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
+    'capturedPieces' | 'materialAdvantage' | 'time'
 > & {
   className?: string;
 };
@@ -81,29 +68,9 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
   </Card>
 );
 
-const classificationStyles: Record<string, { icon: React.ElementType, className: string }> = {
-  Brilliant: { icon: Gem, className: 'text-cyan-400' },
-  Great: { icon: ThumbsUp, className: 'text-sky-500' },
-  Excellent: { icon: CheckCircle2, className: 'text-green-500' },
-  Good: { icon: Check, className: 'text-lime-400' },
-  Book: { icon: BookOpen, className: 'text-gray-400' },
-  Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500' },
-  Mistake: { icon: AlertCircle, className: 'text-orange-500' },
-  Blunder: { icon: AlertTriangle, className: 'text-red-600' },
-};
-
-const chartConfig = {
-  evaluation: {
-    label: "Evaluation",
-    color: "hsl(var(--primary))",
-  },
-} satisfies ChartConfig;
-
-
 export function AnalysisSidebar({ 
     pgn, history, isAITurn, getHint, gameOver, capturedPieces, 
-    materialAdvantage, time, turn, analysis, isAnalyzing, analyzeCurrentGame, 
-    clearAnalysis, className 
+    materialAdvantage, time, className 
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
 
@@ -215,109 +182,16 @@ export function AnalysisSidebar({
         </CardContent>
       </Card>
 
-
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardContent className='p-3'>
-          <Button onClick={analyzeCurrentGame} disabled={isAnalyzing || !gameOver} className="w-full">
-            {isAnalyzing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <BrainCircuit className="mr-2 h-4 w-4" />
-            )}
-            Analyze Game
+          <Button asChild className="w-full" disabled={!pgn}>
+              <Link href={pgn ? `/analysis?pgn=${encodeURIComponent(pgn)}` : '#'}>
+                  <BrainCircuit className="mr-2 h-4 w-4" />
+                  Game Report
+              </Link>
           </Button>
         </CardContent>
       </Card>
-
-      <AlertDialog open={!!analysis} onOpenChange={(open) => !open && clearAnalysis()}>
-        <AlertDialogContent className="max-w-2xl h-[80vh] flex flex-col">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
-            <AlertDialogDescription>
-              {analysis?.summary}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {analysis && analysis.analysis.length > 0 && (
-            <div className="h-48 w-full -mx-6 pr-8 text-xs">
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <LineChart
-                  accessibilityLayer
-                  data={analysis.analysis.map((d, i) => ({ ...d, fullMoveNumber: Math.floor(i / 2) + 1 }))}
-                  margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="fullMoveNumber"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis 
-                      tickFormatter={(value) => `${(Number(value) / 100).toFixed(1)}`}
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                      width={35}
-                  />
-                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                  <ChartTooltip
-                      cursor={true}
-                      content={<ChartTooltipContent
-                          formatter={(value) => `Eval: ${(Number(value) / 100).toFixed(2)}`}
-                          labelFormatter={(_, payload) => {
-                              const move = payload?.[0]?.payload;
-                              if (move) {
-                                  return `${move.moveNumber}${move.player === 'White' ? '.' : '...'} ${move.san}`;
-                              }
-                              return '';
-                          }}
-                          indicator="line"
-                      />}
-                  />
-                  <Line
-                    dataKey="evaluation"
-                    type="monotone"
-                    stroke="var(--color-evaluation)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </div>
-          )}
-
-          <Separator />
-          <ScrollArea className="flex-1 -mx-6">
-             <div className="flex flex-col gap-1 px-6">
-                {analysis?.analysis.map((move, index) => {
-                  const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400' };
-                  const Icon = style.icon;
-                  return (
-                    <div key={index} className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1 p-2.5 rounded-md hover:bg-accent/50">
-                      <div className="flex items-center gap-3 col-start-1 row-span-2 place-self-center">
-                         <span className="font-mono text-sm text-muted-foreground w-8 text-right">{move.moveNumber}{move.player === 'White' ? '.' : '...'}</span>
-                         <span className="font-bold text-lg text-foreground w-20">{move.san}</span>
-                      </div>
-                      <div className="flex items-center gap-2 col-start-2">
-                        <Icon className={cn("h-5 w-5", style.className)} />
-                        <span className={cn("font-semibold", style.className)}>{move.classification}</span>
-                      </div>
-                      <div className="col-start-2 text-sm text-muted-foreground pl-1">
-                        {move.explanation}
-                      </div>
-                    </div>
-                  );
-                })}
-             </div>
-          </ScrollArea>
-          <Separator />
-          <AlertDialogFooter className='pt-4'>
-            <AlertDialogAction onClick={clearAnalysis}>Close</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </aside>
   )
 }

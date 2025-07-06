@@ -5,7 +5,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
-import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from './use-toast';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
@@ -56,10 +55,6 @@ export const useChessGame = () => {
   const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
-
-  // Analysis State
-  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
@@ -195,8 +190,6 @@ export const useChessGame = () => {
     setIsAITurn(false);
     setHint(null);
     setPremove(null);
-    setAnalysis(null);
-    setIsAnalyzing(false);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl]);
@@ -206,16 +199,11 @@ export const useChessGame = () => {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
-          const legalMoves = gameRef.current.moves({ verbose: true });
-          if (legalMoves.length === 1) {
-              makeMove(legalMoves[0].san);
-          } else {
-              const { suggestedMove } = await suggestMove({
-                boardStateFen: gameRef.current.fen(),
-                skillLevel,
-              });
-              makeMove(suggestedMove);
-          }
+          const { suggestedMove } = await suggestMove({
+            boardStateFen: gameRef.current.fen(),
+            skillLevel,
+          });
+          makeMove(suggestedMove);
           
           if (premove) {
               const premoveResult = gameRef.current.move(premove);
@@ -415,38 +403,9 @@ export const useChessGame = () => {
   const canUndo = history.length > 0;
   const canRedo = false;
 
-  const analyzeCurrentGame = useCallback(async () => {
-    setIsAnalyzing(true);
-    setAnalysis(null);
-    try {
-      if (!pgn || pgn.trim() === '') {
-        toast({
-          variant: 'destructive',
-          title: 'Analysis Failed',
-          description: 'Cannot analyze an empty game.',
-        });
-        return;
-      }
-      const result = await analyzeGame({ pgn, skillLevel: 'intermediate' });
-      setAnalysis(result);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Analysis Failed',
-        description: 'Could not analyze the game at this time.',
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [pgn, toast]);
-
-  const clearAnalysis = useCallback(() => {
-    setAnalysis(null);
-  }, []);
-
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
     customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors,
-    analysis, isAnalyzing, analyzeCurrentGame, clearAnalysis, handlePieceDrop
+    handlePieceDrop
   };
 };

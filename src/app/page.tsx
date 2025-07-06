@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,7 +98,7 @@ export default function Home() {
           <ChessBoard {...game} />
         </div>
 
-        <AlertDialog open={!!game.gameOver && !game.analysis}>
+        <AlertDialog open={!!game.gameOver}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
@@ -109,7 +110,9 @@ export default function Home() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <Button variant="outline" onClick={game.analyzeCurrentGame}>Analyze</Button>
+                    <Button variant="outline" asChild>
+                       <Link href={game.pgn ? `/analysis?pgn=${encodeURIComponent(game.pgn)}` : '#'}>Game Report</Link>
+                    </Button>
                     <AlertDialogAction onClick={game.resetGame}>
                         Play Again
                     </AlertDialogAction>
