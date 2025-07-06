@@ -27,12 +27,14 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
+import { ChessPieceDisplay } from './chess-piece';
+import type { ChessPiece } from '@/lib/types';
 
-type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver'> & {
+type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 'capturedPieces' | 'materialAdvantage'> & {
   className?: string;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false }: { name: string, avatarSrc: string, isOpponent?: boolean }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0 }: { name: string, avatarSrc: string, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center">
@@ -41,7 +43,23 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false }: { name: string, ava
             <AvatarImage src={avatarSrc} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
             <AvatarFallback>{name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold">{name}</span>
+          <div className="flex flex-col">
+            <span className="font-semibold">{name}</span>
+            {(capturedPieces.length > 0 || materialAdvantage > 0) &&
+              <div className="flex items-center gap-0.5 h-5 mt-0.5">
+                {capturedPieces.map((p, i) => (
+                  <div key={i} className="w-4 h-4 text-white">
+                    <ChessPieceDisplay piece={p} pieceSet="classic" />
+                  </div>
+                ))}
+                {materialAdvantage > 0 &&
+                  <span className="text-xs font-bold text-lime-400/90 ml-1">
+                    +{materialAdvantage}
+                  </span>
+                }
+              </div>
+            }
+          </div>
         </div>
         <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1">
           10:00
@@ -63,7 +81,7 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
 };
 
 
-export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, className }: AnalysisSidebarProps) {
+export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, capturedPieces, materialAdvantage, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -89,10 +107,23 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
   for (let i = 0; i < history.length; i += 2) {
     movePairs.push([history[i], history[i + 1]]);
   }
+
+  // PlayerOne is white, AI Opponent is black.
+  const playerCapturedPieces = capturedPieces.w; // White player captures black pieces.
+  const opponentCapturedPieces = capturedPieces.b; // Black player captures white pieces.
+  
+  const playerAdvantage = materialAdvantage > 0 ? materialAdvantage : 0;
+  const opponentAdvantage = materialAdvantage < 0 ? Math.abs(materialAdvantage) : 0;
   
   return (
     <aside className={cn("w-72 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
-      <PlayerCard name="AI Opponent" avatarSrc="https://placehold.co/40x40.png" isOpponent={true} />
+      <PlayerCard 
+        name="AI Opponent" 
+        avatarSrc="https://placehold.co/40x40.png" 
+        isOpponent={true} 
+        capturedPieces={opponentCapturedPieces}
+        materialAdvantage={opponentAdvantage}
+      />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
         <CardHeader className='pb-2'>
@@ -124,7 +155,12 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
         </CardContent>
       </Card>
       
-      <PlayerCard name="PlayerOne" avatarSrc="https://placehold.co/40x40.png" />
+      <PlayerCard 
+        name="PlayerOne" 
+        avatarSrc="https://placehold.co/40x40.png"
+        capturedPieces={playerCapturedPieces}
+        materialAdvantage={playerAdvantage}
+      />
       
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader className='pb-3 pt-4'>

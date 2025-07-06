@@ -10,6 +10,15 @@ import { useToast } from './use-toast';
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
 type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal';
 
+const pieceValues: { [key in ChessPiece['type']]: number } = {
+  p: 1,
+  n: 3,
+  b: 3,
+  r: 5,
+  q: 9,
+  k: 0,
+};
+
 export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [game, setGame] = useState(new Chess());
   const [board, setBoard] = useState<BoardState>(getBoardState(game));
@@ -22,6 +31,8 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
   const [hint, setHint] = useState<ChessMove | null>(null);
+  const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
+  const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
 
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
@@ -45,7 +56,59 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   }
 
   const updateGameState = useCallback((g: Chess) => {
-    setBoard(getBoardState(g));
+    const newBoard = getBoardState(g);
+    setBoard(newBoard);
+
+    // Calculate captured pieces and material advantage
+    const initialPieceSet: { [key in ChessPiece['type']]: number } = {
+      p: 8, n: 2, b: 2, r: 2, q: 1, k: 1,
+    };
+
+    const currentPieceCounts: { [c in PlayerColor]: { [pt in ChessPiece['type']]: number } } = {
+      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
+    };
+    
+    newBoard.forEach(p => {
+        currentPieceCounts[p.piece.color][p.piece.type]++;
+    });
+
+    const captured: { w: ChessPiece[]; b: ChessPiece[] } = { w: [], b: [] };
+    let whiteMaterialOnBoard = 0;
+    let blackMaterialOnBoard = 0;
+    
+    for (const color of ['w', 'b'] as PlayerColor[]) {
+      for (const p_type in initialPieceSet) {
+          const type = p_type as ChessPiece['type'];
+          
+          const initialCount = initialPieceSet[type];
+          const currentCount = currentPieceCounts[color][type];
+          const capturedCount = initialCount - currentCount;
+
+          if (capturedCount > 0) {
+              for (let i = 0; i < capturedCount; i++) {
+                  if (color === 'w') {
+                      captured.b.push({ type, color: 'w' }); // Black captures white pieces
+                  } else {
+                      captured.w.push({ type, color: 'b' }); // White captures black pieces
+                  }
+              }
+          }
+          if (color === 'w') {
+            whiteMaterialOnBoard += currentCount * pieceValues[type];
+          } else {
+            blackMaterialOnBoard += currentCount * pieceValues[type];
+          }
+      }
+    }
+    
+    const sortPieces = (a: ChessPiece, b: ChessPiece) => pieceValues[b.type] - pieceValues[a.type];
+    captured.w.sort(sortPieces);
+    captured.b.sort(sortPieces);
+
+    setCapturedPieces(captured);
+    setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
+
     if (g.isGameOver()) {
       let status = 'Game Over';
       let winner = '';
@@ -205,9 +268,20 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
           description: explanation,
         });
       } else {
-        throw new Error("AI suggested an invalid move.");
+        // AI might return UCI format
+        const uciMove = game.moves({ verbose: true }).find(m => m.from + m.to === suggestedMove);
+        if (uciMove) {
+            setHint(uciMove);
+            toast({
+              title: 'Hint: ' + uciMove.san,
+              description: explanation,
+            });
+        } else {
+            throw new Error("AI suggested an invalid move format: " + suggestedMove);
+        }
       }
     } catch (error) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Hint Failed',
@@ -266,5 +340,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setTimeControl,
     hint,
     getHint,
+    capturedPieces,
+    materialAdvantage,
   };
 };
