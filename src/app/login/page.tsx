@@ -15,9 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Puzzle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   // State for login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -30,20 +32,71 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd validate credentials here. For this demo,
-    // we assume login is successful and just set the logged in flag.
-    // The username from a previous signup will be picked up automatically.
-    localStorage.setItem('isLoggedIn', 'true');
-    router.replace('/');
+    try {
+      const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
+      const user = users.find(
+        (u: any) => u.email === loginEmail && u.password === loginPassword
+      );
+
+      if (user) {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('username', user.username);
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${user.username}!`,
+        });
+        router.replace('/');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: 'Invalid email or password. Please try again.',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'An error occurred',
+        description: 'Could not process your login request.',
+      });
+    }
   };
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd create a new user here. For this demo,
-    // we just save the chosen username and set the logged in flag.
-    localStorage.setItem('username', signupUsername);
-    localStorage.setItem('isLoggedIn', 'true');
-    router.replace('/');
+    try {
+      const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
+      const existingUser = users.find((u: any) => u.email === signupEmail);
+
+      if (existingUser) {
+        toast({
+          variant: 'destructive',
+          title: 'Signup Failed',
+          description: 'An account with this email already exists.',
+        });
+        return;
+      }
+      
+      const newUser = { username: signupUsername, email: signupEmail, password: signupPassword };
+      users.push(newUser);
+      localStorage.setItem('pgchess_users', JSON.stringify(users));
+
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('username', signupUsername);
+      
+      toast({
+          title: 'Account Created!',
+          description: `Welcome to PGChess, ${signupUsername}!`,
+      });
+
+      router.replace('/');
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'An error occurred',
+            description: 'Could not create your account.',
+        });
+    }
   };
 
   return (
