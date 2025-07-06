@@ -19,7 +19,12 @@ const PieceSvg = ({ type, color }: { type: PieceType['type']; color: PieceType['
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.4))' }}
+      style={{
+        filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.4))',
+        // The pawn SVGs are drawn pointing "up" the board.
+        // For black pawns, we rotate them 180 degrees so they face the opponent.
+        ...((type === 'p' && color === 'b') && { transform: 'rotate(180deg)', transformOrigin: 'center' }),
+      }}
     >
       <path d={PIECE_PATHS[type]} />
     </g>
