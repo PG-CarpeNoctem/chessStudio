@@ -33,13 +33,13 @@ const formatTime = (ms: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: number }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: number }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={avatarSrc} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
+            <AvatarImage src={avatarSrc || (isOpponent ? 'https://placehold.co/40x40.png' : 'https://placehold.co/40x40.png')} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
             <AvatarFallback>{name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
@@ -73,23 +73,27 @@ export function AnalysisSidebar({
     materialAdvantage, time, className 
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
+    const updateUserState = () => {
+        const storedUsername = localStorage.getItem('username');
+        if (storedUsername) {
+            setUsername(storedUsername);
+        }
+        setAvatar(localStorage.getItem('chess:avatar'));
     }
+    updateUserState();
     
-    const handleUsernameChange = () => {
-      const newUsername = localStorage.getItem('username');
-      if (newUsername) {
-        setUsername(newUsername);
-      }
-    };
-    window.addEventListener('usernameChanged', handleUsernameChange);
+    window.addEventListener('profileChanged', updateUserState);
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'username' || e.key === 'chess:avatar') {
+            updateUserState();
+        }
+    });
 
     return () => {
-      window.removeEventListener('usernameChanged', handleUsernameChange);
+      window.removeEventListener('profileChanged', updateUserState);
     };
   }, []);
 
@@ -115,7 +119,7 @@ export function AnalysisSidebar({
     <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <PlayerCard 
         name="AI Opponent" 
-        avatarSrc="https://placehold.co/40x40.png" 
+        avatarSrc={null} 
         isOpponent={true} 
         capturedPieces={opponentCapturedPieces}
         materialAdvantage={opponentAdvantage}
@@ -159,7 +163,7 @@ export function AnalysisSidebar({
       
       <PlayerCard 
         name={username} 
-        avatarSrc="https://placehold.co/40x40.png"
+        avatarSrc={avatar}
         capturedPieces={playerCapturedPieces}
         materialAdvantage={playerAdvantage}
         time={time.w}
@@ -195,3 +199,5 @@ export function AnalysisSidebar({
     </aside>
   )
 }
+
+    

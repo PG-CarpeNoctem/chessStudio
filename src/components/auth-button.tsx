@@ -13,43 +13,37 @@ import Link from 'next/link';
 export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
   const [username, setUsername] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const checkLoginStatus = () => {
-        const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
-        setIsLoggedIn(loggedInStatus);
-        if (loggedInStatus) {
-            setUsername(localStorage.getItem('username') || 'PlayerOne');
-        } else {
-            setUsername(null);
-        }
-    };
-    
-    // Check on mount
-    checkLoginStatus();
+  const updateUserState = () => {
+    const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
+    setIsLoggedIn(loggedInStatus);
+    if (loggedInStatus) {
+        setUsername(localStorage.getItem('username') || 'PlayerOne');
+        setAvatar(localStorage.getItem('chess:avatar'));
+    } else {
+        setUsername(null);
+        setAvatar(null);
+    }
+  };
 
-    // Listen for storage changes from other tabs
+  useEffect(() => {
+    updateUserState();
+
     const handleStorageChange = (e: StorageEvent) => {
-        if(e.key === 'isLoggedIn' || e.key === 'username') {
-            checkLoginStatus();
+        if(['isLoggedIn', 'username', 'chess:avatar'].includes(e.key || '')) {
+            updateUserState();
         }
     }
     window.addEventListener('storage', handleStorageChange);
     
-    // Listen for username changes from the settings page in the same tab
-    const handleUsernameChange = () => {
-      const newUsername = localStorage.getItem('username');
-      if (newUsername) {
-        setUsername(newUsername);
-      }
-    };
-    window.addEventListener('usernameChanged', handleUsernameChange);
-
+    // Listen for changes from the settings page in the same tab
+    window.addEventListener('profileChanged', updateUserState);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('usernameChanged', handleUsernameChange);
+      window.removeEventListener('profileChanged', updateUserState);
     }
 
   }, []);
@@ -57,8 +51,8 @@ export function AuthButton() {
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('username');
-    setIsLoggedIn(false);
-    setUsername(null);
+    localStorage.removeItem('chess:avatar');
+    updateUserState();
     router.replace('/login');
   };
 
@@ -84,9 +78,9 @@ export function AuthButton() {
         <PopoverTrigger asChild>
           <button className="flex items-center gap-3 text-left w-full hover:bg-sidebar-accent p-1 rounded-md transition-colors">
             <Avatar className="h-8 w-8">
-              <AvatarImage src="https://placehold.co/40x40.png" alt="@playerone" data-ai-hint="avatar abstract" />
+              <AvatarImage src={avatar || "https://placehold.co/40x40.png"} alt={username} data-ai-hint="avatar abstract" />
               <AvatarFallback>
-                <Skeleton className="h-8 w-8 rounded-full" />
+                {username.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
@@ -99,7 +93,7 @@ export function AuthButton() {
           <div className="flex flex-col space-y-2">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src="https://placehold.co/40x40.png" alt={username} data-ai-hint="avatar abstract" />
+                <AvatarImage src={avatar || "https://placehold.co/40x40.png"} alt={username} data-ai-hint="avatar abstract" />
                 <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
@@ -139,3 +133,5 @@ export function AuthButton() {
     </Button>
   );
 }
+
+    
