@@ -55,7 +55,7 @@ function AnalysisPageComponent() {
     
     const gameForReplay = new Chess();
     // Load the canonical PGN from the analysis result.
-    gameForReplay.load(analysis.pgn);
+    gameForReplay.loadPgn(analysis.pgn);
     const history = gameForReplay.history({ verbose: true });
     
     const boardAtMove = new Chess();
@@ -94,26 +94,39 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
-      // chess.js `load` method attempts to load a PGN or a FEN.
-      // We check the return value to see if it was successful.
-      const loaded = chess.load(pgnToAnalyze, { sloppy: true });
       
-      if (!loaded) {
-          // If it fails to load, it's likely an invalid PGN.
+      try {
+        // loadPgn is the correct method for PGNs. It throws on error.
+        chess.loadPgn(pgnToAnalyze, { sloppy: true });
+      } catch (pgnError) {
+        // If PGN loading fails, it might be a FEN or just invalid.
+        try {
+          // The `load` method is for FENs. It also throws on error.
+          const chessFen = new Chess();
+          chessFen.load(pgnToAnalyze);
+          // If we reach here, it loaded as a FEN successfully.
+          throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
+        } catch (fenError) {
+          // If it's the specific error we just threw, re-throw it.
+          if (fenError instanceof Error && fenError.message.startsWith("A FEN position")) {
+            throw fenError;
+          }
+          // Otherwise, it's not a valid FEN either, so the original input was invalid PGN.
           throw new Error("Invalid PGN. Please check the format and try again.");
+        }
       }
       
-      // If it loaded but there are no moves, it was a FEN string.
-      // The analysis flow requires a full game to provide a meaningful report.
+      // If we are here, PGN loaded successfully. Check for moves.
       if (chess.history().length === 0) {
-        throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
+        throw new Error("The PGN contains no moves. Please provide a full game to analyze.");
       }
       
+      // PGN is valid and has moves, proceed with analysis.
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
 
       const finalGame = new Chess();
-      finalGame.load(result.pgn);
+      finalGame.loadPgn(result.pgn);
       updateBoardAtMove(finalGame.history().length - 1);
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
@@ -130,7 +143,7 @@ function AnalysisPageComponent() {
       if (!analysis || !analysis.pgn || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
       
       const gameForMove = new Chess();
-      gameForMove.load(analysis.pgn);
+      gameForMove.loadPgn(analysis.pgn);
       const history = gameForMove.history({ verbose: true });
       
       return history[currentMoveIndex] || null;

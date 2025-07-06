@@ -93,7 +93,7 @@ export const useChessGame = () => {
     });
     setBoard(newBoardState);
     setHistory(g.history({verbose: true}));
-    setPgn(g.pgn());
+    
     setTurn(g.turn());
     
     const initialPieceSet: { [key in ChessPiece['type']]: number } = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
@@ -144,17 +144,23 @@ export const useChessGame = () => {
       if (g.isCheckmate()) {
         status = 'Checkmate';
         winner = g.turn() === 'w' ? 'Black' : 'White';
+        g.setHeader('Result', winner === 'White' ? '1-0' : '0-1');
       } else if (g.isDraw()) {
         status = 'Draw';
+        g.setHeader('Result', '1/2-1/2');
       } else if (g.isStalemate()) {
         status = 'Stalemate';
+        g.setHeader('Result', '1/2-1/2');
       } else if (g.isThreefoldRepetition()) {
         status = 'Threefold Repetition';
+        g.setHeader('Result', '1/2-1/2');
       }
       setGameOver({ status, winner });
     } else {
         setGameOver(null);
     }
+    
+    setPgn(g.pgn());
   }, []);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
@@ -198,7 +204,16 @@ export const useChessGame = () => {
   }, [makeMove, gameMode, turn, gameOver, isAITurn]);
 
   const resetGame = useCallback(() => {
-    gameRef.current = new Chess();
+    const g = new Chess();
+    if (gameMode === 'ai') {
+        const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'Player' : 'Player';
+        g.setHeader('White', username);
+        g.setHeader('Black', 'AI Opponent');
+    } else {
+        g.setHeader('White', 'Player 1');
+        g.setHeader('Black', 'Player 2');
+    }
+    gameRef.current = g;
     const { initialTime } = parseTimeControl(timeControl);
     updateGameState();
     resetMoveSelection();
@@ -207,7 +222,7 @@ export const useChessGame = () => {
     setPremove(null);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
-  }, [updateGameState, timeControl]);
+  }, [updateGameState, timeControl, gameMode]);
 
   useEffect(() => {
     if (gameMode === 'ai' && turn === 'b' && !gameOver) {
