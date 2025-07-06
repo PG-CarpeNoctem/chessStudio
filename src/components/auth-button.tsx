@@ -1,12 +1,29 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogIn, User } from 'lucide-react';
-import { useState } from 'react';
+import { LogIn } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Skeleton } from './ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
+  }, []);
+  
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    setIsLoggedIn(false);
+    router.replace('/login');
+  };
+
+  const handleLogin = () => {
+    router.push('/login');
+  }
 
   if (isLoggedIn) {
     return (
@@ -21,7 +38,7 @@ export function AuthButton() {
           <span className="font-semibold text-sm">PlayerOne</span>
           <button
             className="text-xs text-muted-foreground hover:text-primary transition-colors text-left"
-            onClick={() => setIsLoggedIn(false)}
+            onClick={handleLogout}
           >
             Logout
           </button>
@@ -31,9 +48,9 @@ export function AuthButton() {
   }
 
   return (
-    <Button onClick={() => setIsLoggedIn(true)} size="sm">
+    <Button onClick={handleLogin} size="sm">
       <LogIn className="mr-2 h-4 w-4" />
-      Login to Save Games
+      Login to Play
     </Button>
   );
 }

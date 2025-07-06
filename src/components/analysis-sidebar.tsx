@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -54,7 +55,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
   };
   
   return (
-    <aside className={cn("w-72 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
+    <aside className={cn("w-64 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardHeader>
           <CardTitle>Game Analysis</CardTitle>

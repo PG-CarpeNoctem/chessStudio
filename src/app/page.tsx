@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ChessBoard } from '@/components/chess-board';
@@ -8,16 +9,24 @@ import { Loader2, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const game = useChessGame();
-  const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    // This check runs only on the client-side
+    const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (!loggedIn) {
+      router.replace('/login');
+    } else {
+      setIsAuthenticating(false);
+    }
+  }, [router]);
 
-  if (!isClient) {
+  if (isAuthenticating) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -36,7 +45,7 @@ export default function Home() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[300px] bg-transparent border-0">
+            <SheetContent side="left" className="p-0 w-[280px] bg-transparent border-0">
               <GameSidebar {...game} className="w-full h-full border-r-0" />
             </SheetContent>
           </Sheet>
@@ -48,7 +57,7 @@ export default function Home() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 w-[300px] bg-transparent border-0">
+            <SheetContent side="right" className="p-0 w-[280px] bg-transparent border-0">
               <AnalysisSidebar {...game} className="w-full h-full border-l-0" />
             </SheetContent>
           </Sheet>
