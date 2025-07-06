@@ -23,7 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { PieceSet, BoardTheme, CustomColors } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserCircle, Palette, Show, Eye } from 'lucide-react';
+import { UserCircle, Palette, Eye, Gamepad2, ChevronsRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 
@@ -116,12 +116,16 @@ function AppearanceSettings() {
     const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getJsonSetting('chess:boardTheme', 'cyan'));
     const [pieceSet, setPieceSet] = useState<PieceSet>(() => getJsonSetting('chess:pieceSet', 'classic'));
     const [showCoordinates, setShowCoordinates] = useState<boolean>(() => getJsonSetting('chess:showCoordinates', true));
+    const [showPossibleMoves, setShowPossibleMoves] = useState<boolean>(() => getJsonSetting('chess:showPossibleMoves', true));
+    const [showLastMoveHighlight, setShowLastMoveHighlight] = useState<boolean>(() => getJsonSetting('chess:showLastMoveHighlight', true));
     const [customColors, setCustomColors] = useState<CustomColors>(() => getJsonSetting('chess:customColors', defaultCustomColors));
     
     useEffect(() => { setJsonSetting('chess:boardTheme', boardTheme); }, [boardTheme]);
     useEffect(() => { setJsonSetting('chess:pieceSet', pieceSet); }, [pieceSet]);
     useEffect(() => { setJsonSetting('chess:customColors', customColors); }, [customColors]);
     useEffect(() => { setJsonSetting('chess:showCoordinates', showCoordinates); }, [showCoordinates]);
+    useEffect(() => { setJsonSetting('chess:showPossibleMoves', showPossibleMoves); }, [showPossibleMoves]);
+    useEffect(() => { setJsonSetting('chess:showLastMoveHighlight', showLastMoveHighlight); }, [showLastMoveHighlight]);
 
     const handleColorChange = (key: keyof CustomColors, value: string) => {
         setCustomColors(c => ({...c, [key]: value}));
@@ -166,12 +170,30 @@ function AppearanceSettings() {
                 </Select>
             </div>
             
-            <div className="flex items-center justify-between max-w-sm">
-                <Label htmlFor="show-coordinates" className="flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    Show Coordinates
-                </Label>
-                <Switch id="show-coordinates" checked={showCoordinates} onCheckedChange={setShowCoordinates} />
+            <div className="space-y-4 rounded-md border p-4 max-w-sm">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="show-coordinates" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Show Coordinates
+                    </Label>
+                    <Switch id="show-coordinates" checked={showCoordinates} onCheckedChange={setShowCoordinates} />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="show-possible-moves" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Show Possible Moves
+                    </Label>
+                    <Switch id="show-possible-moves" checked={showPossibleMoves} onCheckedChange={setShowPossibleMoves} />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="highlight-last-move" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Highlight Last Move
+                    </Label>
+                    <Switch id="highlight-last-move" checked={showLastMoveHighlight} onCheckedChange={setShowLastMoveHighlight} />
+                </div>
             </div>
 
             {boardTheme === 'custom' && (
@@ -244,10 +266,70 @@ function AppearanceSettings() {
   );
 }
 
+function GameplaySettings() {
+  const { toast } = useToast();
+  
+  const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>(() => getJsonSetting('chess:autoPromoteTo', 'q'));
+  const [enablePremove, setEnablePremove] = useState<boolean>(() => getJsonSetting('chess:enablePremove', true));
+
+  useEffect(() => { setJsonSetting('chess:autoPromoteTo', autoPromoteTo); }, [autoPromoteTo]);
+  useEffect(() => { setJsonSetting('chess:enablePremove', enablePremove); }, [enablePremove]);
+  
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast({
+      title: 'Gameplay Settings Saved',
+      description: 'Your preferences have been updated.',
+    });
+  };
+
+  return (
+    <Card>
+      <form onSubmit={handleSave}>
+        <CardHeader>
+            <CardTitle>Gameplay</CardTitle>
+            <CardDescription>Customize your game playing experience.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="flex items-center justify-between max-w-sm">
+                <Label htmlFor="enable-premove" className="flex items-center gap-2">
+                    <ChevronsRight className="h-4 w-4" />
+                    Enable Premoves
+                </Label>
+                <Switch id="enable-premove" checked={enablePremove} onCheckedChange={setEnablePremove} />
+            </div>
+
+            <div className="space-y-2 max-w-sm">
+                <Label htmlFor="auto-promote-to">Automatic Pawn Promotion</Label>
+                <Select onValueChange={(value) => setAutoPromoteTo(value as 'q' | 'r' | 'b' | 'n')} value={autoPromoteTo}>
+                    <SelectTrigger id="auto-promote-to">
+                        <SelectValue placeholder="Select piece to promote to" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="q">Queen</SelectItem>
+                        <SelectItem value="r">Rook</SelectItem>
+                        <SelectItem value="b">Bishop</SelectItem>
+                        <SelectItem value="n">Knight</SelectItem>
+                    </SelectContent>
+                </Select>
+                 <p className="text-xs text-muted-foreground">
+                    Pawns will automatically be promoted to this piece.
+                </p>
+            </div>
+        </CardContent>
+        <CardFooter className="border-t bg-muted/50 px-6 py-3">
+            <Button type="submit">Save Changes</Button>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
+
 export default function SettingsPage() {
   return (
     <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="profile">
                 <UserCircle className="h-5 w-5 mr-2" />
                 Profile
@@ -256,12 +338,19 @@ export default function SettingsPage() {
                 <Palette className="h-5 w-5 mr-2" />
                 Appearance
             </TabsTrigger>
+            <TabsTrigger value="gameplay">
+                <Gamepad2 className="h-5 w-5 mr-2" />
+                Gameplay
+            </TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="mt-6">
             <ProfileSettings />
         </TabsContent>
         <TabsContent value="appearance" className="mt-6">
             <AppearanceSettings />
+        </TabsContent>
+        <TabsContent value="gameplay" className="mt-6">
+            <GameplaySettings />
         </TabsContent>
     </Tabs>
   );

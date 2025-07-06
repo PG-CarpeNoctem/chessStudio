@@ -33,8 +33,7 @@ import Link from 'next/link';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'resetGame' | 'skillLevel' | 'setSkillLevel' | 'flipBoard' | 'undoMove' | 'redoMove' |
-    'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl' |
-    'showPossibleMoves' | 'setShowPossibleMoves' | 'showLastMoveHighlight' | 'setShowLastMoveHighlight'
+    'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl'
 > & {
     className?: string;
 };
@@ -52,10 +51,6 @@ export function GameSidebar({
   setGameMode,
   timeControl,
   setTimeControl,
-  showPossibleMoves,
-  setShowPossibleMoves,
-  showLastMoveHighlight,
-  setShowLastMoveHighlight,
   className,
 }: GameSidebarProps) {
   const { toast } = useToast();
@@ -217,15 +212,6 @@ export function GameSidebar({
                             <p className="text-xs text-muted-foreground pt-1">Current AI Skill: {skillLevel}</p>
                             </div>
                         )}
-                        <Separator />
-                        <div className="flex items-center justify-between pt-1">
-                            <Label htmlFor="possible-moves" className="text-sm">Show Possible Moves</Label>
-                            <Switch id="possible-moves" checked={showPossibleMoves} onCheckedChange={setShowPossibleMoves} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="last-move" className="text-sm">Highlight Last Move</Label>
-                            <Switch id="last-move" checked={showLastMoveHighlight} onCheckedChange={setShowLastMoveHighlight} />
-                        </div>
                     </CardContent>
                 </Card>
             </div>

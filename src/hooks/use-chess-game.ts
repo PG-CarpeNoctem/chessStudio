@@ -71,7 +71,7 @@ export const useChessGame = () => {
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
 
-  // UI Settings
+  // UI Settings from localStorage
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
   const [pieceSet, setPieceSet] = useState<PieceSet>(() => getSetting('chess:pieceSet', 'classic'));
   const [showPossibleMoves, setShowPossibleMoves] = useState(() => getSetting('chess:showPossibleMoves', true));
@@ -79,6 +79,9 @@ export const useChessGame = () => {
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
   const [customColors, setCustomColors] = useState<CustomColors>(() => getSetting('chess:customColors', defaultCustomColors));
   const [showCoordinates, setShowCoordinates] = useState<boolean>(() => getSetting('chess:showCoordinates', true));
+  const [enablePremove, setEnablePremove] = useState<boolean>(() => getSetting('chess:enablePremove', true));
+  const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>(() => getSetting('chess:autoPromoteTo', 'q'));
+
 
   const updateGameState = useCallback(() => {
     const g = gameRef.current;
@@ -190,18 +193,20 @@ export const useChessGame = () => {
   };
 
   const handlePieceDrop = useCallback((from: ChessSquare, to: ChessSquare) => {
-    if (gameOver || isAITurn) return;
-
-    if (gameMode === 'ai' && turn === 'b') {
+    if (isAITurn) {
+      if (enablePremove) {
         setPremove({ from, to });
         resetMoveSelection();
-        return;
+      }
+      return;
     }
+
+    if(gameOver) return;
     
-    const move = { from, to, promotion: 'q' };
+    const move = { from, to, promotion: autoPromoteTo };
     makeMove(move);
     resetMoveSelection();
-  }, [makeMove, gameMode, turn, gameOver, isAITurn]);
+  }, [makeMove, gameOver, isAITurn, enablePremove, autoPromoteTo]);
 
   const resetGame = useCallback(() => {
     const g = new Chess();
@@ -260,25 +265,27 @@ export const useChessGame = () => {
   }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove, updateGameState]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver || isAITurn) return;
+    if (gameOver) return;
 
     const g = gameRef.current;
     
-    if (gameMode === 'ai' && g.turn() === 'b') {
-        if(selectedSquare) {
-            setPremove({from: selectedSquare, to: square});
-            resetMoveSelection();
-        } else {
-            const piece = g.get(square);
-            if (piece && piece.color === 'w') {
-                setSelectedSquare(square);
-            }
-        }
-        return;
+    if (isAITurn) {
+      if (enablePremove) {
+          if (selectedSquare) {
+              setPremove({ from: selectedSquare, to: square });
+              resetMoveSelection();
+          } else {
+              const piece = g.get(square);
+              if (piece && piece.color === 'w') {
+                  setSelectedSquare(square);
+              }
+          }
+      }
+      return;
     }
 
     if (selectedSquare) {
-      const move = { from: selectedSquare, to: square, promotion: 'q' };
+      const move = { from: selectedSquare, to: square, promotion: autoPromoteTo };
       const isMoveSuccessful = makeMove(move);
       
       if (!isMoveSuccessful) {
@@ -299,7 +306,7 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, makeMove, gameMode, gameOver, isAITurn, turn]);
+  }, [selectedSquare, makeMove, gameOver, isAITurn, turn, enablePremove, autoPromoteTo]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -342,6 +349,8 @@ export const useChessGame = () => {
         updateState('chess:showCoordinates', setShowCoordinates);
         updateState('chess:showPossibleMoves', setShowPossibleMoves);
         updateState('chess:showLastMoveHighlight', setShowLastMoveHighlight);
+        updateState('chess:enablePremove', setEnablePremove);
+        updateState('chess:autoPromoteTo', setAutoPromoteTo);
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
