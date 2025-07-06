@@ -73,17 +73,29 @@ export const useChessGame = () => {
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
 
   // UI Settings from localStorage
-  const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
-  const [pieceSet, setPieceSet] = useState<PieceSet>(() => getSetting('chess:pieceSet', 'classic'));
-  const [showPossibleMoves, setShowPossibleMoves] = useState(() => getSetting('chess:showPossibleMoves', true));
-  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(() => getSetting('chess:showLastMoveHighlight', true));
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
+  const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
+  const [showPossibleMoves, setShowPossibleMoves] = useState(true);
+  const [showLastMoveHighlight, setShowLastMoveHighlight] = useState(true);
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
-  const [customColors, setCustomColors] = useState<CustomColors>(() => getSetting('chess:customColors', defaultCustomColors));
-  const [showCoordinates, setShowCoordinates] = useState<CoordinatesDisplay>(() => getSetting('chess:showCoordinates', 'outside'));
-  const [enablePremove, setEnablePremove] = useState<boolean>(() => getSetting('chess:enablePremove', true));
-  const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>(() => getSetting('chess:autoPromoteTo', 'q'));
-  const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(() => getSetting('chess:confirmMove', false));
+  const [customColors, setCustomColors] = useState<CustomColors>(defaultCustomColors);
+  const [showCoordinates, setShowCoordinates] = useState<CoordinatesDisplay>('outside');
+  const [enablePremove, setEnablePremove] = useState<boolean>(true);
+  const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>('q');
+  const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
 
+  // Effect to load settings from localStorage on client-side mount
+  useEffect(() => {
+    setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
+    setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
+    setShowPossibleMoves(getSetting<boolean>('chess:showPossibleMoves', true));
+    setShowLastMoveHighlight(getSetting<boolean>('chess:showLastMoveHighlight', true));
+    setCustomColors(getSetting<CustomColors>('chess:customColors', defaultCustomColors));
+    setShowCoordinates(getSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'));
+    setEnablePremove(getSetting<boolean>('chess:enablePremove', true));
+    setAutoPromoteTo(getSetting<'q' | 'r' | 'b' | 'n'>('chess:autoPromoteTo', 'q'));
+    setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
+  }, []);
 
   const updateGameState = useCallback(() => {
     const g = gameRef.current;

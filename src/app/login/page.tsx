@@ -48,6 +48,7 @@ export default function LoginPage() {
       if (user) {
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('username', user.username);
+        localStorage.setItem('email', user.email);
         toast({
           title: 'Login Successful',
           description: `Welcome back, ${user.username}!`,
@@ -100,6 +101,7 @@ export default function LoginPage() {
 
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('username', signupUsername);
+      localStorage.setItem('email', signupEmail);
       
       toast({
           title: 'Account Created!',

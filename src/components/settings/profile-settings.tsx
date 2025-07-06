@@ -52,33 +52,41 @@ export function ProfileSettings() {
     username: 'Player',
     firstName: '',
     lastName: '',
-    email: '',
     bio: '',
     avatar: '',
     country: '',
     pronouns: '',
     url: '',
+    twitterUrl: '',
+    twitchUrl: '',
   };
   
   const [settings, setSettings] = useState(defaultState);
   const [initialState, setInitialState] = useState(defaultState);
+  const [userEmail, setUserEmail] = useState('');
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
+    setUserEmail(localStorage.getItem('email') || 'No email associated');
     const loadedState = {
         username: getSetting('username', 'Player'),
         firstName: getSetting('chess:firstName', ''),
         lastName: getSetting('chess:lastName', ''),
-        email: getSetting('chess:email', ''),
         bio: getSetting('chess:bio', ''),
         avatar: getSetting('chess:avatar', ''),
         country: getSetting('chess:country', ''),
         pronouns: getSetting('chess:pronouns', ''),
         url: getSetting('chess:url', ''),
+        twitterUrl: getSetting('chess:twitterUrl', ''),
+        twitchUrl: getSetting('chess:twitchUrl', ''),
     };
     setSettings(loadedState);
     setInitialState(loadedState);
   }, []);
-
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,12 +95,13 @@ export function ProfileSettings() {
     setSetting('username', settings.username);
     setSetting('chess:firstName', settings.firstName);
     setSetting('chess:lastName', settings.lastName);
-    setSetting('chess:email', settings.email);
     setSetting('chess:avatar', settings.avatar);
     setSetting('chess:bio', settings.bio);
     setSetting('chess:country', settings.country);
     setSetting('chess:pronouns', settings.pronouns);
     setSetting('chess:url', settings.url);
+    setSetting('chess:twitterUrl', settings.twitterUrl);
+    setSetting('chess:twitchUrl', settings.twitchUrl);
     
     setInitialState(settings); // Update the initial state to the new saved state
     
@@ -104,6 +113,79 @@ export function ProfileSettings() {
   
   const handleCancel = () => {
     setSettings(initialState);
+  };
+
+  const handleChangePassword = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        toast({
+            variant: 'destructive',
+            title: 'Password Change Failed',
+            description: 'Please fill in all password fields.',
+        });
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        toast({
+            variant: 'destructive',
+            title: 'Password Change Failed',
+            description: 'New passwords do not match.',
+        });
+        return;
+    }
+
+    try {
+        const loggedInEmail = localStorage.getItem('email');
+        if (!loggedInEmail) {
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Error',
+                description: 'Could not find your user details. Please log in again.',
+            });
+            return;
+        }
+
+        const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
+        const userIndex = users.findIndex((u: any) => u.email === loggedInEmail);
+
+        if (userIndex === -1) {
+            toast({
+                variant: 'destructive',
+                title: 'Password Change Failed',
+                description: 'User account not found.',
+            });
+            return;
+        }
+
+        const user = users[userIndex];
+        if (user.password !== currentPassword) {
+            toast({
+                variant: 'destructive',
+                title: 'Password Change Failed',
+                description: 'Incorrect current password.',
+            });
+            return;
+        }
+
+        users[userIndex].password = newPassword;
+        localStorage.setItem('pgchess_users', JSON.stringify(users));
+
+        toast({
+            title: 'Password Changed',
+            description: 'Your password has been successfully updated.',
+        });
+        
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    } catch (error) {
+        console.error('Password change error:', error);
+        toast({
+            variant: 'destructive',
+            title: 'An error occurred',
+            description: 'Could not change your password.',
+        });
+    }
   };
   
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +242,7 @@ export function ProfileSettings() {
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={settings.email} onChange={(e) => setSettings(s => ({ ...s, email: e.target.value }))} />
+                    <Input id="email" type="email" value={userEmail} readOnly className="cursor-not-allowed bg-muted/50" />
                 </div>
             </div>
           </div>
@@ -209,6 +291,48 @@ export function ProfileSettings() {
                   <Input id="url" placeholder="https://example.com" value={settings.url} onChange={(e) => setSettings(s => ({ ...s, url: e.target.value }))} />
               </div>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Social</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                  <Label htmlFor="twitterUrl">Twitter URL</Label>
+                  <Input id="twitterUrl" placeholder="https://twitter.com/username" value={settings.twitterUrl} onChange={e => setSettings(s => ({ ...s, twitterUrl: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="twitchUrl">Twitch URL</Label>
+                  <Input id="twitchUrl" placeholder="https://twitch.tv/username" value={settings.twitchUrl} onChange={e => setSettings(s => ({ ...s, twitchUrl: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+              <h3 className="text-lg font-medium">Change Password</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                  </div>
+                  <div></div> {/* Spacer */}
+                  <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                  </div>
+              </div>
+              <div className="flex justify-start">
+                  <Button type="button" variant="secondary" onClick={handleChangePassword}>
+                      Change Password
+                  </Button>
+              </div>
           </div>
 
         </CardContent>

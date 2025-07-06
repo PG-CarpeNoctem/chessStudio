@@ -32,7 +32,7 @@ export function AuthButton() {
     updateUserState();
 
     const handleStorageChange = (e: StorageEvent) => {
-        if(['isLoggedIn', 'username', 'chess:avatar'].includes(e.key || '')) {
+        if(['isLoggedIn', 'username', 'chess:avatar', 'email'].includes(e.key || '')) {
             updateUserState();
         }
     }
@@ -52,6 +52,7 @@ export function AuthButton() {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('username');
     localStorage.removeItem('chess:avatar');
+    localStorage.removeItem('email');
     updateUserState();
     router.replace('/login');
   };
@@ -133,5 +134,3 @@ export function AuthButton() {
     </Button>
   );
 }
-
-    

@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { PieceSet, BoardTheme, CustomColors, CoordinatesDisplay } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -77,14 +76,14 @@ const pieceSets = ['classic', 'alpha', 'merida', 'neo'] as const;
 export function AppearanceSettings() {
     const { toast } = useToast();
     
-    const [settings, setSettings] = useState(() => ({
+    const [settings, setSettings] = useState({
         boardTheme: 'cyan' as BoardTheme,
         pieceSet: 'classic' as PieceSet,
         showCoordinates: 'outside' as CoordinatesDisplay,
         showPossibleMoves: true,
         showLastMoveHighlight: true,
         customColors: defaultCustomColors,
-    }));
+    });
     const [initialState, setInitialState] = useState(settings);
 
     useEffect(() => {
