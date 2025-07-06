@@ -12,7 +12,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb } from 'lucide-react';
+import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb, ClipboardCopy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
   AlertDialog,
@@ -136,6 +136,22 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
     }
   };
 
+  const handleCopyPgn = () => {
+    if (pgn) {
+        navigator.clipboard.writeText(pgn);
+        toast({
+            title: 'Success!',
+            description: 'PGN copied to clipboard.',
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'No PGN available to copy.',
+        });
+    }
+  };
+
   const movePairs: [any, any | undefined][] = [];
   for (let i = 0; i < history.length; i += 2) {
     movePairs.push([history[i], history[i + 1]]);
@@ -161,10 +177,15 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
         <CardHeader className='pb-2'>
-          <CardTitle className="flex items-center justify-between text-base">
-            Move History
-            {isAITurn && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          </CardTitle>
+            <CardTitle className="flex items-center justify-between text-base">
+                Move History
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopyPgn} title="Copy PGN">
+                        <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                    {isAITurn && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                </div>
+            </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
@@ -11,44 +11,33 @@ type BoardState = { square: ChessSquare; piece: ChessPiece }[];
 type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal';
 
 const pieceValues: { [key in ChessPiece['type']]: number } = {
-  p: 1,
-  n: 3,
-  b: 3,
-  r: 5,
-  q: 9,
-  k: 0,
+  p: 1, n: 3, b: 3, r: 5, q: 9, k: 0,
 };
-
-function getBoardState(g: Chess): BoardState {
-    const boardState: BoardState = [];
-    g.board().forEach(row => {
-      row.forEach(square => {
-        if (square) {
-          boardState.push({ square: square.square, piece: { type: square.type, color: square.color } });
-        }
-      });
-    });
-    return boardState;
-}
 
 const parseTimeControl = (timeControl: TimeControl) => {
     if (timeControl === 'unlimited') {
         return { initialTime: Infinity, increment: 0 };
     }
     const [minutes, increment] = timeControl.split('+').map(Number);
-    return { initialTime: minutes * 60 * 1000, increment: increment * 1000 };
+    return { initialTime: minutes * 60 * 1000, increment: (increment || 0) * 1000 };
 };
 
 
 export const useChessGame = () => {
-  const [game, setGame] = useState(new Chess());
+  const gameRef = useRef(new Chess());
+  
+  // State derived from the game instance
+  const [board, setBoard] = useState<BoardState>([]);
   const [history, setHistory] = useState<readonly ChessMove[]>([]);
+  const [turn, setTurn] = useState<PlayerColor>('w');
+  const [pgn, setPgn] = useState('');
+  const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
+
+  // UI and interaction state
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
   const [skillLevel, setSkillLevel] = useState(4); // Stockfish level 1-20
-  const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
-  const [redoStack, setRedoStack] = useState<ChessMove[]>([]);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
   const [time, setTime] = useState({ w: 600000, b: 600000 });
@@ -66,22 +55,28 @@ export const useChessGame = () => {
 
   const { toast } = useToast();
 
-  const board = useMemo(() => getBoardState(game), [game]);
-
-  const updateGameState = useCallback((g: Chess) => {
-    // Calculate captured pieces and material advantage
-    const initialPieceSet: { [key in ChessPiece['type']]: number } = {
-      p: 8, n: 2, b: 2, r: 2, q: 1, k: 1,
-    };
-
+  const updateGameState = useCallback(() => {
+    const g = gameRef.current;
+    
+    const newBoardState: BoardState = [];
+    g.board().forEach(row => {
+      row.forEach(square => {
+        if (square) {
+          newBoardState.push({ square: square.square, piece: { type: square.type, color: square.color } });
+        }
+      });
+    });
+    setBoard(newBoardState);
+    setHistory(g.history({verbose: true}));
+    setPgn(g.pgn());
+    setTurn(g.turn());
+    
+    const initialPieceSet: { [key in ChessPiece['type']]: number } = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
     const currentPieceCounts: { [c in PlayerColor]: { [pt in ChessPiece['type']]: number } } = {
       w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
       b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
     };
-    
-    getBoardState(g).forEach(p => {
-        currentPieceCounts[p.piece.color][p.piece.type]++;
-    });
+    newBoardState.forEach(p => { currentPieceCounts[p.piece.color][p.piece.type]++; });
 
     const captured: { w: ChessPiece[]; b: ChessPiece[] } = { w: [], b: [] };
     let whiteMaterialOnBoard = 0;
@@ -90,7 +85,6 @@ export const useChessGame = () => {
     for (const color of ['w', 'b'] as PlayerColor[]) {
       for (const p_type in initialPieceSet) {
           const type = p_type as ChessPiece['type'];
-          
           const initialCount = initialPieceSet[type];
           const currentCount = currentPieceCounts[color][type];
           const capturedCount = initialCount - currentCount;
@@ -98,9 +92,9 @@ export const useChessGame = () => {
           if (capturedCount > 0) {
               for (let i = 0; i < capturedCount; i++) {
                   if (color === 'w') {
-                      captured.b.push({ type, color: 'w' }); // Black captures white pieces
+                      captured.b.push({ type, color: 'w' });
                   } else {
-                      captured.w.push({ type, color: 'b' }); // White captures black pieces
+                      captured.w.push({ type, color: 'b' });
                   }
               }
           }
@@ -115,10 +109,8 @@ export const useChessGame = () => {
     const sortPieces = (a: ChessPiece, b: ChessPiece) => pieceValues[b.type] - pieceValues[a.type];
     captured.w.sort(sortPieces);
     captured.b.sort(sortPieces);
-
     setCapturedPieces(captured);
     setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
-    setHistory(g.history({verbose: true}));
 
     if (g.isGameOver()) {
       setTimerOn(false);
@@ -141,19 +133,15 @@ export const useChessGame = () => {
   }, []);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
-    const gameCopy = new Chess(game.fen());
     try {
-      const result = gameCopy.move(move);
+      const prevTurn = gameRef.current.turn();
+      const result = gameRef.current.move(move);
       if (result) {
         if (timeControl !== 'unlimited') {
             const { increment } = parseTimeControl(timeControl);
-            const prevTurn = game.turn();
             setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + increment }));
         }
-
-        setGame(gameCopy);
-        updateGameState(gameCopy);
-        setRedoStack([]);
+        updateGameState();
         setHint(null);
         if (!timerOn && timeControl !== 'unlimited') setTimerOn(true);
         return true;
@@ -162,30 +150,28 @@ export const useChessGame = () => {
       return false;
     }
     return false;
-  }, [game, updateGameState, timeControl, timerOn]);
+  }, [timeControl, timerOn, updateGameState]);
 
 
   const resetGame = useCallback(() => {
-    const newGame = new Chess();
+    gameRef.current = new Chess();
     const { initialTime } = parseTimeControl(timeControl);
-    setGame(newGame);
-    updateGameState(newGame);
+    updateGameState();
     setSelectedSquare(null);
     setPossibleMoves([]);
     setIsAITurn(false);
-    setRedoStack([]);
     setHint(null);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl]);
 
   useEffect(() => {
-    if (gameMode === 'ai' && game.turn() === 'b' && !game.isGameOver()) {
+    if (gameMode === 'ai' && gameRef.current.turn() === 'b' && !gameRef.current.isGameOver()) {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
           const { suggestedMove } = await suggestMove({
-            boardStateFen: game.fen(),
+            boardStateFen: gameRef.current.fen(),
             skillLevel,
           });
           makeMove(suggestedMove);
@@ -203,22 +189,23 @@ export const useChessGame = () => {
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [game, gameMode, skillLevel, makeMove, toast]);
+  }, [turn, gameMode, skillLevel, makeMove, toast, pgn]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
     if (gameOver || isAITurn) return;
     
-    if (gameMode === 'ai' && game.turn() === 'b') return;
+    const g = gameRef.current;
+    if (gameMode === 'ai' && g.turn() === 'b') return;
 
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square, promotion: 'q' };
       const isMoveSuccessful = makeMove(move);
       
       if (!isMoveSuccessful) {
-        const piece = game.get(square);
-        if (piece && piece.color === game.turn()) {
+        const piece = g.get(square);
+        if (piece && piece.color === g.turn()) {
           setSelectedSquare(square);
-          setPossibleMoves(game.moves({ square, verbose: true }));
+          setPossibleMoves(g.moves({ square, verbose: true }));
         } else {
           setSelectedSquare(null);
           setPossibleMoves([]);
@@ -228,58 +215,42 @@ export const useChessGame = () => {
          setPossibleMoves([]);
       }
     } else {
-      const piece = game.get(square);
-      if (piece && piece.color === game.turn()) {
+      const piece = g.get(square);
+      if (piece && piece.color === g.turn()) {
         setSelectedSquare(square);
-        setPossibleMoves(game.moves({ square, verbose: true }));
+        setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, game, makeMove, gameMode, gameOver, isAITurn]);
+  }, [selectedSquare, makeMove, gameMode, gameOver, isAITurn]);
 
   const undoMove = useCallback(() => {
-    if (game.history().length === 0) return;
+    if (gameRef.current.history().length === 0) return;
     
-    const gameCopy = new Chess(game.fen());
-    const undoneMove = gameCopy.undo();
-    if (undoneMove) {
-      setRedoStack((prev) => [undoneMove, ...prev]);
-
-      if (gameMode === 'ai' && game.history().length > 1) {
-        const undoneMove2 = gameCopy.undo();
-        if (undoneMove2) {
-            setRedoStack((prev) => [undoneMove2, ...prev]);
-        }
-      }
-
-      setGame(gameCopy);
-      updateGameState(gameCopy);
-      setHint(null);
+    gameRef.current.undo();
+    if (gameMode === 'ai' && gameRef.current.history().length > 0) {
+      gameRef.current.undo();
     }
-  }, [game, updateGameState, gameMode]);
+    updateGameState();
+    setHint(null);
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+  }, [updateGameState, gameMode]);
 
   const redoMove = useCallback(() => {
-    if (redoStack.length > 0) {
-      const gameCopy = new Chess(game.fen());
-      const move_to_redo = redoStack[0];
-      gameCopy.move(move_to_redo);
-
-      if (gameMode === 'ai' && redoStack.length > 1) {
-        const move_to_redo2 = redoStack[1];
-        gameCopy.move(move_to_redo2);
-        setRedoStack((prev) => prev.slice(2));
-      } else {
-        setRedoStack((prev) => prev.slice(1));
-      }
-
-      setGame(gameCopy);
-      updateGameState(gameCopy);
-      setHint(null);
-    }
-  }, [redoStack, game, updateGameState, gameMode]);
+    toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
+  }, [toast]);
 
   useEffect(() => {
     resetGame();
-  }, [timeControl, gameMode, resetGame]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeControl, gameMode]);
+  
+  // Initial game setup on mount
+  useEffect(() => {
+    updateGameState();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   useEffect(() => {
     if (!timerOn || gameOver || timeControl === 'unlimited') {
@@ -287,7 +258,7 @@ export const useChessGame = () => {
     }
 
     const interval = setInterval(() => {
-      const currentTurn = game.turn();
+      const currentTurn = gameRef.current.turn();
       setTime(prev => {
         const newTimeForPlayer = prev[currentTurn] - 100;
         if (newTimeForPlayer <= 0) {
@@ -300,11 +271,11 @@ export const useChessGame = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, game, timeControl]);
+  }, [timerOn, gameOver, turn, timeControl]);
 
 
   const getHint = useCallback(async () => {
-    if (game.isGameOver() || isAITurn) return;
+    if (gameRef.current.isGameOver() || isAITurn) return;
 
     toast({
       title: 'Thinking...',
@@ -313,20 +284,12 @@ export const useChessGame = () => {
     
     try {
       const { suggestedMove, explanation } = await suggestMove({
-        boardStateFen: game.fen(),
+        boardStateFen: gameRef.current.fen(),
         skillLevel: 20,
       });
 
-      let moveDetails = game.moves({ verbose: true }).find(m => m.san === suggestedMove || (m.from + m.to === suggestedMove) || (m.from + m.to + (m.promotion || '') === suggestedMove));
-      
-      if (!moveDetails) {
-        // AI might return UCI, let's try to make the move to get the SAN
-        const gameCopy = new Chess(game.fen());
-        const result = gameCopy.move(suggestedMove);
-        if (result) {
-            moveDetails = result;
-        }
-      }
+      const gameCopy = new Chess(gameRef.current.fen());
+      const moveDetails = gameCopy.move(suggestedMove);
 
       if (moveDetails) {
         setHint(moveDetails);
@@ -345,7 +308,7 @@ export const useChessGame = () => {
         description: 'Could not get a hint at this time.',
       });
     }
-  }, [game, toast, isAITurn]);
+  }, [toast, isAITurn]);
 
 
   const flipBoard = useCallback(() => {
@@ -353,52 +316,21 @@ export const useChessGame = () => {
   }, []);
 
   const lastMove = useMemo(() => {
-    return history.length > 0 ? history[history.length - 1] : null;
-  }, [history]);
+    const hist = gameRef.current.history({verbose: true});
+    return hist.length > 0 ? hist[hist.length - 1] : null;
+  }, [pgn]); // pgn is a proxy for any change in game state
 
   const kingInCheck = useMemo(() => {
-    if (!game.inCheck()) return null;
-    const kingPos = board.find(p => p.piece.type === 'k' && p.piece.color === game.turn());
-    return kingPos?.square;
-  }, [game, board]);
+    const g = gameRef.current;
+    if (!g.inCheck()) return null;
+    const kSquare = g.board().flat().find(p => p?.type === 'k' && p.color === g.turn())?.square;
+    return kSquare;
+  }, [turn, pgn]);
+
+  const canUndo = history.length > 0;
+  const canRedo = false; // Redo is complex and has been disabled to prevent bugs.
 
   return {
-    board,
-    turn: game.turn(),
-    onSquareClick,
-    selectedSquare,
-    possibleMoves,
-    resetGame,
-    history,
-    pgn: game.pgn(),
-    isAITurn,
-    lastMove,
-    kingInCheck,
-    gameOver,
-    skillLevel,
-    setSkillLevel,
-    boardTheme,
-    setBoardTheme,
-    showPossibleMoves,
-    setShowPossibleMoves,
-    showLastMoveHighlight,
-    setShowLastMoveHighlight,
-    boardOrientation,
-    flipBoard,
-    pieceSet,
-    setPieceSet,
-    undoMove,
-    redoMove,
-    canUndo: history.length > 0,
-    canRedo: redoStack.length > 0,
-    gameMode,
-    setGameMode,
-    timeControl,
-    setTimeControl,
-    time,
-    hint,
-    getHint,
-    capturedPieces,
-    materialAdvantage,
+    board, turn, onSquareClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage,
   };
 };
