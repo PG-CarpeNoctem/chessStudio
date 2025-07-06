@@ -139,7 +139,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
   const opponentAdvantage = materialAdvantage < 0 ? Math.abs(materialAdvantage) : 0;
   
   return (
-    <aside className={cn("w-72 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
+    <aside className={cn("w-64 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <PlayerCard 
         name="AI Opponent" 
         avatarSrc="https://placehold.co/40x40.png" 
@@ -219,7 +219,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
       </Card>
 
       <AlertDialog open={!!analysis} onOpenChange={(open) => !open && setAnalysis(null)}>
-        <AlertDialogContent className="max-w-2xl h-[70vh] flex flex-col">
+        <AlertDialogContent className="max-w-xl h-[60vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
             <AlertDialogDescription>

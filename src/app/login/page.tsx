@@ -21,17 +21,23 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // State for login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-
-  // State for signup form
   const [signupUsername, setSignupUsername] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!loginEmail || !loginPassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'Please enter both email and password.',
+      });
+      return;
+    }
+
     try {
       const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
       const user = users.find(
@@ -54,6 +60,7 @@ export default function LoginPage() {
         });
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         variant: 'destructive',
         title: 'An error occurred',
@@ -64,6 +71,15 @@ export default function LoginPage() {
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!signupUsername || !signupEmail || !signupPassword) {
+      toast({
+          variant: 'destructive',
+          title: 'Signup Failed',
+          description: 'Please fill in all fields.',
+      });
+      return;
+    }
+
     try {
       const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
       const existingUser = users.find((u: any) => u.email === signupEmail);
@@ -91,11 +107,12 @@ export default function LoginPage() {
 
       router.replace('/');
     } catch (error) {
-        toast({
+      console.error('Signup error:', error);
+      toast({
             variant: 'destructive',
             title: 'An error occurred',
             description: 'Could not create your account.',
-        });
+      });
     }
   };
 
@@ -118,30 +135,31 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
-                        <Label htmlFor="login-email">Email</Label>
-                        <Input
-                            id="login-email"
-                            type="email"
-                            placeholder="player@example.com"
-                            required
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                        />
+                          <Label htmlFor="login-email">Email</Label>
+                          <Input
+                              id="login-email"
+                              type="email"
+                              placeholder="player@example.com"
+                              required
+                              value={loginEmail}
+                              onChange={(e) => setLoginEmail(e.target.value)}
+                          />
                         </div>
                         <div className="space-y-2">
-                        <Label htmlFor="login-password">Password</Label>
-                        <Input
-                            id="login-password"
-                            type="password"
-                            required
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                        />
+                          <Label htmlFor="login-password">Password</Label>
+                          <Input
+                              id="login-password"
+                              type="password"
+                              required
+                              placeholder="••••••••"
+                              value={loginPassword}
+                              onChange={(e) => setLoginPassword(e.target.value)}
+                          />
                         </div>
                     </CardContent>
                     <CardFooter>
                         <Button type="submit" className="w-full">
-                        Login
+                          Login
                         </Button>
                     </CardFooter>
                 </form>
@@ -176,6 +194,7 @@ export default function LoginPage() {
                             <Input
                                 id="signup-password"
                                 type="password"
+                                placeholder="••••••••"
                                 required
                                 value={signupPassword}
                                 onChange={(e) => setSignupPassword(e.target.value)}

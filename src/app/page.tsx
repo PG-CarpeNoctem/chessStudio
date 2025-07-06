@@ -75,7 +75,7 @@ export default function Home() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px] bg-transparent border-0">
+            <SheetContent side="left" className="p-0 w-[260px] bg-transparent border-0">
               <GameSidebar {...game} className="w-full h-full border-r-0" />
             </SheetContent>
           </Sheet>
@@ -87,13 +87,13 @@ export default function Home() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="p-0 w-[280px] bg-transparent border-0">
+            <SheetContent side="right" className="p-0 w-[260px] bg-transparent border-0">
               <AnalysisSidebar {...game} className="w-full h-full border-l-0" />
             </SheetContent>
           </Sheet>
         </div>
 
-        <div className="w-full max-w-3xl aspect-square">
+        <div className="w-full max-w-2xl aspect-square">
           <ChessBoard {...game} />
         </div>
 
