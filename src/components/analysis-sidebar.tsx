@@ -10,9 +10,9 @@ import {
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { analyzeGame } from '@/ai/flows/analyze-game';
+import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Users } from 'lucide-react';
+import { BrainCircuit, Loader2, Users, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -51,9 +51,21 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false }: { name: string, ava
   </Card>
 );
 
+const classificationStyles: Record<string, { icon: React.ElementType, className: string }> = {
+  Brilliant: { icon: Gem, className: 'text-cyan-400' },
+  Great: { icon: ThumbsUp, className: 'text-sky-500' },
+  Excellent: { icon: CheckCircle2, className: 'text-green-500' },
+  Good: { icon: Check, className: 'text-lime-400' },
+  Book: { icon: BookOpen, className: 'text-gray-400' },
+  Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500' },
+  Mistake: { icon: AlertCircle, className: 'text-orange-500' },
+  Blunder: { icon: AlertTriangle, className: 'text-red-600' },
+};
+
+
 export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className }: AnalysisSidebarProps) {
   const { toast } = useToast();
-  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleAnalyzeGame = async () => {
@@ -61,9 +73,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
     setAnalysis(null);
     try {
       const result = await analyzeGame({ pgn, skillLevel: 'intermediate' });
-      setAnalysis(
-        `${result.summary}\n\n**Alternative Moves:**\n${result.alternativeMoves.join('\n')}`
-      );
+      setAnalysis(result);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -130,15 +140,38 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, className 
       </Card>
 
       <AlertDialog open={!!analysis} onOpenChange={(open) => !open && setAnalysis(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-3xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Game Analysis</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
             <AlertDialogDescription>
-              <ScrollArea className="max-h-[60vh] pr-4">
-                 <pre className="whitespace-pre-wrap font-sans text-sm">{analysis}</pre>
-              </ScrollArea>
+              {analysis?.summary}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Separator />
+          <ScrollArea className="h-[60vh] pr-4 -mx-2">
+             <div className="flex flex-col gap-1 p-2">
+                {analysis?.analysis.map((move, index) => {
+                  const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400' };
+                  const Icon = style.icon;
+                  return (
+                    <div key={index} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 p-2 rounded-md hover:bg-accent/50">
+                      <div className="flex items-center gap-3 col-start-1">
+                         <span className="font-mono text-sm text-muted-foreground w-8 text-right">{move.moveNumber}.</span>
+                         <span className="text-xl">{move.player === 'White' ? '⚪' : '⚫'}</span>
+                         <span className="font-bold text-base text-foreground w-16">{move.san}</span>
+                      </div>
+                      <div className="flex items-center gap-2 col-start-2">
+                        <Icon className={cn("h-5 w-5", style.className)} />
+                        <span className={cn("font-semibold", style.className)}>{move.classification}</span>
+                      </div>
+                      <div className="col-start-2 text-sm text-muted-foreground pl-1">
+                        {move.explanation}
+                      </div>
+                    </div>
+                  );
+                })}
+             </div>
+          </ScrollArea>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setAnalysis(null)}>Close</AlertDialogAction>
           </AlertDialogFooter>
