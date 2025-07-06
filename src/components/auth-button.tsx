@@ -10,15 +10,22 @@ import { Separator } from './ui/separator';
 
 export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
+  const [username, setUsername] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    setIsLoggedIn(localStorage.getItem('isLoggedIn') === 'true');
+    const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
+    setIsLoggedIn(loggedInStatus);
+    if (loggedInStatus) {
+        setUsername(localStorage.getItem('username') || 'PlayerOne');
+    }
   }, []);
   
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('username');
     setIsLoggedIn(false);
+    setUsername(null);
     router.replace('/login');
   };
 
@@ -38,7 +45,7 @@ export function AuthButton() {
     );
   }
 
-  if (isLoggedIn) {
+  if (isLoggedIn && username) {
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -50,7 +57,7 @@ export function AuthButton() {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="font-semibold text-sm">PlayerOne</span>
+              <span className="font-semibold text-sm">{username}</span>
               <span className="text-xs text-muted-foreground">View Profile</span>
             </div>
           </button>
@@ -59,11 +66,11 @@ export function AuthButton() {
           <div className="flex flex-col space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src="https://placehold.co/40x40.png" alt="@playerone" data-ai-hint="avatar abstract" />
-                <AvatarFallback>P1</AvatarFallback>
+                <AvatarImage src="https://placehold.co/40x40.png" alt={username} data-ai-hint="avatar abstract" />
+                <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-bold">PlayerOne</p>
+                <p className="font-bold">{username}</p>
                 <p className="text-xs text-muted-foreground">Online</p>
               </div>
             </div>

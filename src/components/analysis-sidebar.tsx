@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
 import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +92,14 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
   const { toast } = useToast();
   const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [username, setUsername] = useState('Player');
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const handleAnalyzeGame = async () => {
     setIsAnalyzing(true);
@@ -164,7 +172,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
       </Card>
       
       <PlayerCard 
-        name="PlayerOne" 
+        name={username} 
         avatarSrc="https://placehold.co/40x40.png"
         capturedPieces={playerCapturedPieces}
         materialAdvantage={playerAdvantage}
