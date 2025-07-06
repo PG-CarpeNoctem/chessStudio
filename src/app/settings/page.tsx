@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { PieceSet, BoardTheme } from '@/lib/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 // Helper to safely get item from localStorage
 const getLocalStorageItem = (key: string, defaultValue: any) => {
@@ -29,7 +32,12 @@ const getLocalStorageItem = (key: string, defaultValue: any) => {
     return defaultValue;
   }
   const saved = localStorage.getItem(key);
-  return saved ? JSON.parse(saved) : defaultValue;
+  try {
+    return saved ? JSON.parse(saved) : defaultValue;
+  } catch {
+    localStorage.removeItem(key);
+    return defaultValue;
+  }
 };
 
 // Helper to safely set item in localStorage
@@ -54,12 +62,12 @@ function ProfileSettings() {
   };
 
   return (
-    <Card id="profile">
-      <CardHeader>
-        <CardTitle>Profile</CardTitle>
-        <CardDescription>Update your public profile information.</CardDescription>
-      </CardHeader>
+    <Card>
       <form onSubmit={handleSave}>
+        <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Update your public profile information.</CardDescription>
+        </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
@@ -71,9 +79,9 @@ function ProfileSettings() {
             />
           </div>
         </CardContent>
-        <div className="border-t bg-muted/50 px-6 py-3">
+        <CardFooter className="border-t bg-muted/50 px-6 py-3">
             <Button type="submit">Save Changes</Button>
-        </div>
+        </CardFooter>
       </form>
     </Card>
   );
@@ -91,83 +99,97 @@ function AppearanceSettings() {
     useEffect(() => { setLocalStorageItem('chess:customPieceColors', customPieceColors); }, [customPieceColors]);
 
   return (
-    <Card id="appearance">
-      <CardHeader>
-        <CardTitle>Appearance</CardTitle>
-        <CardDescription>Customize the look and feel of your chessboard and pieces.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-            <Label htmlFor="piece-set">Piece Set</Label>
-            <Select onValueChange={(value) => setPieceSet(value as PieceSet)} value={pieceSet}>
-                <SelectTrigger id="piece-set" className="max-w-sm">
-                    <SelectValue placeholder="Select piece set" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="classic">Classic</SelectItem>
-                    <SelectItem value="alpha">Alpha</SelectItem>
-                    <SelectItem value="merida">Merida</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-
-        <div className="space-y-2">
-            <Label htmlFor="theme">Board Theme</Label>
-            <Select onValueChange={(value) => setBoardTheme(value as BoardTheme)} value={boardTheme}>
-                <SelectTrigger id="theme" className="max-w-sm">
-                    <SelectValue placeholder="Select theme" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="classic">Classic</SelectItem>
-                    <SelectItem value="cyan">Cyan</SelectItem>
-                    <SelectItem value="ocean">Ocean</SelectItem>
-                    <SelectItem value="forest">Forest</SelectItem>
-                    <SelectItem value="charcoal">Charcoal</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-
-        {boardTheme === 'custom' && (
-            <div className="space-y-4 rounded-md border border-border p-4">
-                <Label className="text-base font-medium">Custom Colors</Label>
-                <Separator />
-                <div className="space-y-3">
-                    <Label className="text-sm font-medium">Board Colors</Label>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-w-sm">
-                        <Label htmlFor="light-squares" className="text-xs">Light Squares</Label>
-                        <Label htmlFor="dark-squares" className="text-xs">Dark Squares</Label>
-                        <Input id="light-squares" type="color" value={customBoardColors.light} onChange={e => setCustomBoardColors(c => ({...c, light: e.target.value}))} />
-                        <Input id="dark-squares" type="color" value={customBoardColors.dark} onChange={e => setCustomBoardColors(c => ({...c, dark: e.target.value}))} />
-                    </div>
-                </div>
-                 <Separator />
-                <div className="space-y-3">
-                    <Label className="text-sm font-medium">Piece Colors</Label>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-w-sm">
-                        <Label htmlFor="white-fill" className="text-xs">White Fill</Label>
-                        <Label htmlFor="black-fill" className="text-xs">Black Fill</Label>
-                        <Input id="white-fill" type="color" value={customPieceColors.whiteFill} onChange={e => setCustomPieceColors(c => ({...c, whiteFill: e.target.value}))} />
-                        <Input id="black-fill" type="color" value={customPieceColors.blackFill} onChange={e => setCustomPieceColors(c => ({...c, blackFill: e.target.value}))} />
-
-                        <Label htmlFor="white-stroke" className="text-xs">White Stroke</Label>
-                        <Label htmlFor="black-stroke" className="text-xs">Black Stroke</Label>
-                        <Input id="white-stroke" type="color" value={customPieceColors.whiteStroke} onChange={e => setCustomPieceColors(c => ({...c, whiteStroke: e.target.value}))} />
-                        <Input id="black-stroke" type="color" value={customPieceColors.blackStroke} onChange={e => setCustomPieceColors(c => ({...c, blackStroke: e.target.value}))} />
-                    </div>
-                </div>
+    <Card>
+        <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Customize the look and feel of your chessboard and pieces.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="piece-set">Piece Set</Label>
+                <Select onValueChange={(value) => setPieceSet(value as PieceSet)} value={pieceSet}>
+                    <SelectTrigger id="piece-set" className="max-w-sm">
+                        <SelectValue placeholder="Select piece set" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="classic">Classic</SelectItem>
+                        <SelectItem value="alpha">Alpha</SelectItem>
+                        <SelectItem value="merida">Merida</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-        )}
-      </CardContent>
+
+            <div className="space-y-2">
+                <Label htmlFor="theme">Board Theme</Label>
+                <Select onValueChange={(value) => setBoardTheme(value as BoardTheme)} value={boardTheme}>
+                    <SelectTrigger id="theme" className="max-w-sm">
+                        <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="classic">Classic</SelectItem>
+                        <SelectItem value="cyan">Cyan</SelectItem>
+                        <SelectItem value="ocean">Ocean</SelectItem>
+                        <SelectItem value="forest">Forest</SelectItem>
+                        <SelectItem value="charcoal">Charcoal</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {boardTheme === 'custom' && (
+                <div className="space-y-4 rounded-md border border-border p-4">
+                    <Label className="text-base font-medium">Custom Colors</Label>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="text-sm font-medium">Board Colors</Label>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-w-sm">
+                            <Label htmlFor="light-squares" className="text-xs">Light Squares</Label>
+                            <Label htmlFor="dark-squares" className="text-xs">Dark Squares</Label>
+                            <Input id="light-squares" type="color" value={customBoardColors.light} onChange={e => setCustomBoardColors(c => ({...c, light: e.target.value}))} />
+                            <Input id="dark-squares" type="color" value={customBoardColors.dark} onChange={e => setCustomBoardColors(c => ({...c, dark: e.target.value}))} />
+                        </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-3">
+                        <Label className="text-sm font-medium">Piece Colors</Label>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-w-sm">
+                            <Label htmlFor="white-fill" className="text-xs">White Fill</Label>
+                            <Label htmlFor="black-fill" className="text-xs">Black Fill</Label>
+                            <Input id="white-fill" type="color" value={customPieceColors.whiteFill} onChange={e => setCustomPieceColors(c => ({...c, whiteFill: e.target.value}))} />
+                            <Input id="black-fill" type="color" value={customPieceColors.blackFill} onChange={e => setCustomPieceColors(c => ({...c, blackFill: e.target.value}))} />
+
+                            <Label htmlFor="white-stroke" className="text-xs">White Stroke</Label>
+                            <Label htmlFor="black-stroke" className="text-xs">Black Stroke</Label>
+                            <Input id="white-stroke" type="color" value={customPieceColors.whiteStroke} onChange={e => setCustomPieceColors(c => ({...c, whiteStroke: e.target.value}))} />
+                            <Input id="black-stroke" type="color" value={customPieceColors.blackStroke} onChange={e => setCustomPieceColors(c => ({...c, blackStroke: e.target.value}))} />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </CardContent>
     </Card>
   );
 }
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-8">
-      <ProfileSettings />
-      <AppearanceSettings />
-    </div>
+    <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="profile">
+                <UserCircle className="h-5 w-5 mr-2" />
+                Profile
+            </TabsTrigger>
+            <TabsTrigger value="appearance">
+                <Palette className="h-5 w-5 mr-2" />
+                Appearance
+            </TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile" className="mt-6">
+            <ProfileSettings />
+        </TabsContent>
+        <TabsContent value="appearance" className="mt-6">
+            <AppearanceSettings />
+        </TabsContent>
+    </Tabs>
   );
 }

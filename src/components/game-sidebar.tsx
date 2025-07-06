@@ -88,7 +88,7 @@ export function GameSidebar({
   };
 
   return (
-    <aside className={cn("w-64 flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
+    <aside className={cn("w-[260px] flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>
         {/* Header */}
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">

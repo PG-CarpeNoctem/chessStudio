@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
+import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from './use-toast';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
@@ -33,19 +34,20 @@ const getSetting = <T,>(key: string, defaultValue: T): T => {
 
 export const useChessGame = () => {
   const gameRef = useRef(new Chess());
+  const { toast } = useToast();
   
-  // State derived from the game instance
+  // Game State
   const [board, setBoard] = useState<BoardState>([]);
   const [history, setHistory] = useState<readonly ChessMove[]>([]);
   const [turn, setTurn] = useState<PlayerColor>('w');
   const [pgn, setPgn] = useState('');
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
 
-  // UI and interaction state
+  // UI and Interaction State
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
-  const [skillLevel, setSkillLevel] = useState(4); // Stockfish level 1-20
+  const [skillLevel, setSkillLevel] = useState(4);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
   const [time, setTime] = useState({ w: 600000, b: 600000 });
@@ -55,6 +57,10 @@ export const useChessGame = () => {
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
 
+  // Analysis State
+  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => getSetting('chess:boardTheme', 'cyan'));
   const [pieceSet, setPieceSet] = useState<PieceSet>(() => getSetting('chess:pieceSet', 'classic'));
@@ -63,8 +69,6 @@ export const useChessGame = () => {
   const [boardOrientation, setBoardOrientation] = useState<PlayerColor>('w');
   const [customBoardColors, setCustomBoardColors] = useState(() => getSetting('chess:customBoardColors', { light: '#ebebd0', dark: '#779556' }));
   const [customPieceColors, setCustomPieceColors] = useState(() => getSetting('chess:customPieceColors', { whiteFill: '#FFFFFF', whiteStroke: '#333333', blackFill: '#333333', blackStroke: '#FFFFFF' }));
-
-  const { toast } = useToast();
 
   const updateGameState = useCallback(() => {
     const g = gameRef.current;
@@ -174,6 +178,8 @@ export const useChessGame = () => {
     setIsAITurn(false);
     setHint(null);
     setPremove(null);
+    setAnalysis(null);
+    setIsAnalyzing(false);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl]);
@@ -183,13 +189,18 @@ export const useChessGame = () => {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
-          const { suggestedMove } = await suggestMove({
-            boardStateFen: gameRef.current.fen(),
-            skillLevel,
-          });
-          makeMove(suggestedMove);
+          // Add a check to see if there is only one legal move
+          const legalMoves = gameRef.current.moves({ verbose: true });
+          if (legalMoves.length === 1) {
+              makeMove(legalMoves[0].san);
+          } else {
+              const { suggestedMove } = await suggestMove({
+                boardStateFen: gameRef.current.fen(),
+                skillLevel,
+              });
+              makeMove(suggestedMove);
+          }
           
-          // After AI move, if there is a premove, try to play it
           if (premove) {
               const premoveResult = gameRef.current.move(premove);
               if (premoveResult) {
@@ -215,11 +226,10 @@ export const useChessGame = () => {
   }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove, updateGameState]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver) return;
+    if (gameOver || isAITurn) return;
 
     const g = gameRef.current;
     
-    // Premove logic
     if (gameMode === 'ai' && g.turn() === 'b') {
         if(selectedSquare) {
             setPremove({from: selectedSquare, to: square});
@@ -284,17 +294,25 @@ export const useChessGame = () => {
     toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
   }, [toast]);
 
-  // Load settings from localStorage on mount and listen for changes
+  // Settings synchronization
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-        switch(e.key) {
-            case 'chess:boardTheme': setBoardTheme(JSON.parse(e.newValue!)); break;
-            case 'chess:pieceSet': setPieceSet(JSON.parse(e.newValue!)); break;
-            case 'chess:customBoardColors': setCustomBoardColors(JSON.parse(e.newValue!)); break;
-            case 'chess:customPieceColors': setCustomPieceColors(JSON.parse(e.newValue!)); break;
-            case 'chess:showPossibleMoves': setShowPossibleMoves(JSON.parse(e.newValue!)); break;
-            case 'chess:showLastMoveHighlight': setShowLastMoveHighlight(JSON.parse(e.newValue!)); break;
-        }
+        const updateState = (key: string, setter: (value: any) => void) => {
+            if (e.key === key && e.newValue) {
+                try {
+                    setter(JSON.parse(e.newValue));
+                } catch {
+                    // Fallback for non-JSON values
+                    setter(e.newValue);
+                }
+            }
+        };
+        updateState('chess:boardTheme', setBoardTheme);
+        updateState('chess:pieceSet', setPieceSet);
+        updateState('chess:customBoardColors', setCustomBoardColors);
+        updateState('chess:customPieceColors', setCustomPieceColors);
+        updateState('chess:showPossibleMoves', setShowPossibleMoves);
+        updateState('chess:showLastMoveHighlight', setShowLastMoveHighlight);
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -302,16 +320,12 @@ export const useChessGame = () => {
 
   useEffect(() => {
     resetGame();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeControl, gameMode]);
+  }, [timeControl, gameMode, resetGame]);
   
-  // Initial game setup on mount
   useEffect(() => {
     updateGameState();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [updateGameState]);
 
-  // Robust timer effect
   useEffect(() => {
     if (!timerOn || gameOver || timeControl === 'unlimited') {
       return;
@@ -360,7 +374,7 @@ export const useChessGame = () => {
           description: explanation,
         });
       } else {
-        throw new Error("AI suggested an invalid or unparseable move: " + suggestedMove);
+        throw new Error("AI suggested an invalid move: " + suggestedMove);
       }
     } catch (error) {
       console.error(error);
@@ -370,30 +384,58 @@ export const useChessGame = () => {
         description: 'Could not get a hint at this time.',
       });
     }
-  }, [toast, isAITurn, pgn]);
-
+  }, [toast, isAITurn]);
 
   const flipBoard = useCallback(() => {
     setBoardOrientation(prev => (prev === 'w' ? 'b' : 'w'));
   }, []);
 
-  const lastMove = useMemo(() => {
-    const hist = gameRef.current.history({verbose: true});
-    return hist.length > 0 ? hist[hist.length - 1] : null;
-  }, [pgn]);
+  const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
   const kingInCheck = useMemo(() => {
     const g = gameRef.current;
-    if (!g.inCheck()) return null;
-    const kSquare = g.board().flat().find(p => p?.type === 'k' && p.color === g.turn())?.square;
-    return kSquare;
-  }, [turn, pgn]);
+    if (!g.isGameOver() && g.inCheck()) {
+        const kingSquare = g.board().flat().find(p => p?.type === 'k' && p.color === g.turn())?.square;
+        return kingSquare;
+    }
+    return null;
+  }, [pgn, turn]);
 
   const canUndo = history.length > 0;
-  const canRedo = false; // Redo is complex and has been disabled to prevent bugs.
+  const canRedo = false;
+
+  const analyzeCurrentGame = useCallback(async () => {
+    setIsAnalyzing(true);
+    setAnalysis(null);
+    try {
+      if (!pgn || pgn.trim() === '') {
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: 'Cannot analyze an empty game.',
+        });
+        return;
+      }
+      const result = await analyzeGame({ pgn, skillLevel: 'intermediate' });
+      setAnalysis(result);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: 'Could not analyze the game at this time.',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [pgn, toast]);
+
+  const clearAnalysis = useCallback(() => {
+    setAnalysis(null);
+  }, []);
 
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
-    customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors
+    customBoardColors, setCustomBoardColors, customPieceColors, setCustomPieceColors,
+    analysis, isAnalyzing, analyzeCurrentGame, clearAnalysis
   };
 };

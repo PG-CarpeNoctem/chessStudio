@@ -97,7 +97,7 @@ export default function Home() {
           <ChessBoard {...game} />
         </div>
 
-        <AlertDialog open={!!game.gameOver}>
+        <AlertDialog open={!!game.gameOver && !game.analysis}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
@@ -109,6 +109,7 @@ export default function Home() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
+                    <Button variant="outline" onClick={game.analyzeCurrentGame}>Analyze</Button>
                     <AlertDialogAction onClick={game.resetGame}>
                         Play Again
                     </AlertDialogAction>

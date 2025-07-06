@@ -19,19 +19,7 @@ export default function SettingsLayout({
             </Button>
             <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         </div>
-        <div className="grid gap-8 md:grid-cols-[200px_1fr]">
-            <nav className="flex flex-col gap-2 text-lg text-muted-foreground">
-                <Link href="#profile" className="flex items-center gap-2 rounded-md px-3 py-2 font-medium hover:bg-accent hover:text-accent-foreground">
-                   <UserCircle className="h-5 w-5" />
-                   Profile
-                </Link>
-                <Link href="#appearance" className="flex items-center gap-2 rounded-md px-3 py-2 font-medium hover:bg-accent hover:text-accent-foreground">
-                    <Palette className="h-5 w-5" />
-                    Appearance
-                </Link>
-            </nav>
-            <main className="flex-1">{children}</main>
-        </div>
+        {children}
       </div>
     </div>
   );

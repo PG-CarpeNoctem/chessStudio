@@ -9,11 +9,9 @@ import {
 } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import type { useChessGame } from '@/hooks/use-chess-game';
 import { BrainCircuit, Loader2, Gem, ThumbsUp, CheckCircle2, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, Lightbulb, ClipboardCopy } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +31,11 @@ import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
 
 
-type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 'capturedPieces' | 'materialAdvantage' | 'time' | 'turn'> & {
+type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
+    'pgn' | 'skillLevel' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
+    'capturedPieces' | 'materialAdvantage' | 'time' | 'turn' | 'analysis' | 
+    'isAnalyzing' | 'analyzeCurrentGame' | 'clearAnalysis'
+> & {
   className?: string;
 };
 
@@ -98,57 +100,23 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 
-export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, gameOver, capturedPieces, materialAdvantage, time, turn, className }: AnalysisSidebarProps) {
-  const { toast } = useToast();
-  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+export function AnalysisSidebar({ 
+    pgn, history, isAITurn, getHint, gameOver, capturedPieces, 
+    materialAdvantage, time, turn, analysis, isAnalyzing, analyzeCurrentGame, 
+    clearAnalysis, className 
+}: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
-      setUsername(storedUsername);
+      setUsername(JSON.parse(storedUsername));
     }
   }, []);
-
-  const handleAnalyzeGame = async () => {
-    setIsAnalyzing(true);
-    setAnalysis(null);
-    try {
-      if (!pgn || pgn.trim() === '') {
-        toast({
-          variant: 'destructive',
-          title: 'Analysis Failed',
-          description: 'Cannot analyze an empty game.',
-        });
-        return;
-      }
-      const result = await analyzeGame({ pgn, skillLevel: 'intermediate' });
-      setAnalysis(result);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Analysis Failed',
-        description: 'Could not analyze the game at this time.',
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   const handleCopyPgn = () => {
     if (pgn) {
         navigator.clipboard.writeText(pgn);
-        toast({
-            title: 'Success!',
-            description: 'PGN copied to clipboard.',
-        });
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'No PGN available to copy.',
-        });
     }
   };
 
@@ -165,7 +133,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
   const opponentAdvantage = materialAdvantage < 0 ? Math.abs(materialAdvantage) : 0;
   
   return (
-    <aside className={cn("w-64 flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
+    <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <PlayerCard 
         name="AI Opponent" 
         avatarSrc="https://placehold.co/40x40.png" 
@@ -238,7 +206,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
 
       <Card className="bg-sidebar-accent border-sidebar-border">
         <CardContent className='p-3'>
-          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing || !gameOver} className="w-full">
+          <Button onClick={analyzeCurrentGame} disabled={isAnalyzing || !gameOver} className="w-full">
             {isAnalyzing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -249,7 +217,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!analysis} onOpenChange={(open) => !open && setAnalysis(null)}>
+      <AlertDialog open={!!analysis} onOpenChange={(open) => !open && clearAnalysis()}>
         <AlertDialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2"><BrainCircuit /> Game Analysis</AlertDialogTitle>
@@ -334,7 +302,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
           </ScrollArea>
           <Separator />
           <AlertDialogFooter className='pt-4'>
-            <AlertDialogAction onClick={() => setAnalysis(null)}>Close</AlertDialogAction>
+            <AlertDialogAction onClick={clearAnalysis}>Close</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

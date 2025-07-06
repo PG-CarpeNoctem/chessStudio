@@ -24,17 +24,46 @@ export function AuthButton() {
         }
     };
     
+    // Check on mount
     checkLoginStatus();
 
+    // Listen for storage changes
     const handleStorageChange = (e: StorageEvent) => {
         if(e.key === 'isLoggedIn' || e.key === 'username') {
             checkLoginStatus();
         }
     }
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    
+    // Listen for username changes from other tabs (e.g. settings page)
+    const handleUsernameChange = () => {
+      const newUsername = localStorage.getItem('username');
+      if (newUsername) {
+        setUsername(JSON.parse(newUsername));
+      }
+    };
+    window.addEventListener('usernameChanged', handleUsernameChange);
+
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('usernameChanged', handleUsernameChange);
+    }
 
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) {
+        try {
+          setUsername(JSON.parse(storedUsername));
+        } catch {
+          setUsername(storedUsername);
+        }
+      }
+    }
+  }, [isLoggedIn]);
   
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
