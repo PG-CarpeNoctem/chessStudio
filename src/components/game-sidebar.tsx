@@ -20,7 +20,7 @@ import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { Play, RefreshCw, Settings } from 'lucide-react';
+import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
 import type { PieceSet } from '@/lib/types';
@@ -44,6 +44,12 @@ export function GameSidebar({
   flipBoard,
   pieceSet,
   setPieceSet,
+  undoMove,
+  redoMove,
+  canUndo,
+  canRedo,
+  gameMode,
+  setGameMode,
   className,
 }: GameSidebarProps) {
   const { toast } = useToast();
@@ -90,6 +96,16 @@ export function GameSidebar({
             <Play className="mr-2 h-4 w-4" />
             New Game
           </Button>
+           <div className="grid grid-cols-2 gap-2">
+            <Button onClick={undoMove} disabled={!canUndo} variant="outline">
+              <Undo2 className="mr-2 h-4 w-4" />
+              Undo
+            </Button>
+            <Button onClick={redoMove} disabled={!canRedo} variant="outline">
+              <Redo2 className="mr-2 h-4 w-4" />
+              Redo
+            </Button>
+          </div>
            <Button onClick={flipBoard}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Flip Board
@@ -102,20 +118,36 @@ export function GameSidebar({
           <CardTitle className="flex items-center gap-2"><Settings /> Settings</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="difficulty">AI Difficulty</Label>
-            <Select onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
-              <SelectTrigger id="difficulty">
-                <SelectValue placeholder="Select difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Beginner">Beginner</SelectItem>
-                <SelectItem value="Intermediate">Intermediate</SelectItem>
-                <SelectItem value="Advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Current AI Skill: {skillLevel}</p>
+           <div className="flex items-center justify-between pt-2">
+            <Label htmlFor="game-mode" className="flex items-center gap-2 text-sm">
+              {gameMode === 'ai' ? <Bot /> : <Users />}
+              Play vs AI
+            </Label>
+            <Switch
+              id="game-mode"
+              checked={gameMode === 'ai'}
+              onCheckedChange={(checked) => {
+                setGameMode(checked ? 'ai' : 'two-player');
+                resetGame();
+              }}
+            />
           </div>
+          {gameMode === 'ai' && (
+            <div className="space-y-2">
+              <Label htmlFor="difficulty">AI Difficulty</Label>
+              <Select onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
+                <SelectTrigger id="difficulty">
+                  <SelectValue placeholder="Select difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Beginner">Beginner</SelectItem>
+                  <SelectItem value="Intermediate">Intermediate</SelectItem>
+                  <SelectItem value="Advanced">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Current AI Skill: {skillLevel}</p>
+            </div>
+          )}
            <div className="space-y-2">
               <Label htmlFor="theme">Board Theme</Label>
               <Select onValueChange={(value) => setBoardTheme(value as any)} defaultValue={boardTheme}>

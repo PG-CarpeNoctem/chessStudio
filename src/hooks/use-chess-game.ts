@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -17,6 +18,8 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
   const [isAITurn, setIsAITurn] = useState(false);
   const [skillLevel, setSkillLevel] = useState(4); // Stockfish level 1-20
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
+  const [redoStack, setRedoStack] = useState<ChessMove[]>([]);
+  const [gameMode, setGameMode] = useState<GameMode>('ai');
 
   // UI Settings
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
@@ -67,6 +70,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
       if (result) {
         setGame(gameCopy);
         updateGameState(gameCopy);
+        setRedoStack([]); // Clear redo stack on new move
         return true;
       }
     } catch (e) {
@@ -78,7 +82,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
 
 
   useEffect(() => {
-    if (game.turn() !== playerColor && !game.isGameOver()) {
+    if (gameMode === 'ai' && game.turn() !== playerColor && !game.isGameOver()) {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
@@ -102,11 +106,12 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [game, playerColor, skillLevel, makeMove, toast]);
+  }, [game, playerColor, skillLevel, makeMove, toast, gameMode]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
     if (game.isGameOver()) return;
-    if (game.turn() !== playerColor) return;
+    // In 'ai' mode, only allow moves for the player
+    if (gameMode === 'ai' && game.turn() !== playerColor) return;
 
     if (selectedSquare) {
       const move = { from: selectedSquare, to: square, promotion: 'q' }; // Auto-promote to Queen
@@ -115,7 +120,7 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
       if (!isMoveSuccessful) {
         // If the move failed, maybe the user wants to select another of their pieces
         const piece = game.get(square);
-        if (piece && piece.color === playerColor) {
+        if (piece && (gameMode === 'two-player' || piece.color === game.turn())) {
           setSelectedSquare(square);
           setPossibleMoves(game.moves({ square, verbose: true }));
         } else {
@@ -130,12 +135,12 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
 
     } else {
       const piece = game.get(square);
-      if (piece && piece.color === playerColor) {
+      if (piece && (gameMode === 'two-player' || piece.color === game.turn())) {
         setSelectedSquare(square);
         setPossibleMoves(game.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, game, playerColor, makeMove]);
+  }, [selectedSquare, game, playerColor, makeMove, gameMode]);
 
   const resetGame = useCallback(() => {
     const newGame = new Chess();
@@ -144,7 +149,32 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     setSelectedSquare(null);
     setPossibleMoves([]);
     setIsAITurn(false);
+    setRedoStack([]);
   }, [updateGameState]);
+
+  const undoMove = useCallback(() => {
+    const gameCopy = new Chess(game.fen());
+    const undoneMove = gameCopy.undo();
+    if (undoneMove) {
+      setGame(gameCopy);
+      updateGameState(gameCopy);
+      setRedoStack((prev) => [undoneMove, ...prev]);
+    }
+  }, [game, updateGameState]);
+
+  const redoMove = useCallback(() => {
+    if (redoStack.length > 0) {
+      const move_to_redo = redoStack[0];
+      const gameCopy = new Chess(game.fen());
+      const result = gameCopy.move(move_to_redo);
+      if (result) {
+        setGame(gameCopy);
+        updateGameState(gameCopy);
+        setRedoStack((prev) => prev.slice(1));
+      }
+    }
+  }, [redoStack, game, updateGameState]);
+
 
   const flipBoard = useCallback(() => {
     setBoardOrientation(prev => (prev === 'w' ? 'b' : 'w'));
@@ -185,5 +215,11 @@ export const useChessGame = (playerColor: PlayerColor = 'w') => {
     flipBoard,
     pieceSet,
     setPieceSet,
+    undoMove,
+    redoMove,
+    canUndo: game.history().length > 0,
+    canRedo: redoStack.length > 0,
+    gameMode,
+    setGameMode,
   };
 };
