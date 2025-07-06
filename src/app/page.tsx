@@ -93,7 +93,7 @@ export default function Home() {
           </Sheet>
         </div>
 
-        <div className="w-full max-w-4xl aspect-square">
+        <div className="w-full max-w-3xl aspect-square">
           <ChessBoard {...game} />
         </div>
 

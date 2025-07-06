@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { ChessPiece as PieceType, PieceSet } from '@/lib/types';
 
-// SVG paths for chess pieces (cburnett style) - Corrected Paths
+// SVG paths for chess pieces (cburnett style)
 const PIECE_PATHS: Record<PieceType['type'], string> = {
   p: 'M22.5,33.5 L22.5,33.5 C20.57,33.5 19,31.93 19,30 C19,28.07 20.57,26.5 22.5,26.5 C24.43,26.5 26,28.07 26,30 C26,31.93 24.43,33.5 22.5,33.5 M15,36.5 C15,36.5 18,39 22.5,39 C27,39 30,36.5 30,36.5 M19.5,25.5 L25.5,25.5 L25.5,16.5 L19.5,16.5 z M17,15.5 L28,15.5 L28,13.5 L17,13.5 z',
   r: 'M9,39 L36,39 L36,36 L9,36 z M12.5,32.5 L32.5,32.5 L32.5,14 L12.5,14 z M12,14 L12,9 L17,9 L17,14 L20,14 L20,9 L25,9 L25,14 L28,14 L28,9 L33,9 L33,14 z',
@@ -21,8 +21,6 @@ const PieceSvg = ({ type, color }: { type: PieceType['type']; color: PieceType['
       strokeLinejoin="round"
       style={{
         filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.4))',
-        // The pawn SVGs are drawn pointing "up" the board.
-        // For black pawns, we rotate them 180 degrees so they face the opponent.
         ...((type === 'p' && color === 'b') && { transform: 'rotate(180deg)', transformOrigin: 'center' }),
       }}
     >

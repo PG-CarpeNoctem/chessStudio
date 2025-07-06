@@ -219,7 +219,7 @@ export function AnalysisSidebar({ pgn, skillLevel, history, isAITurn, getHint, g
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Separator className="my-4" />
-          <ScrollArea className="h-[60vh] pr-4 -mx-2">
+          <ScrollArea className="h-[50vh] pr-4 -mx-2">
              <div className="flex flex-col gap-1 p-2">
                 {analysis?.analysis.map((move, index) => {
                   const style = classificationStyles[move.classification] || { icon: HelpCircle, className: 'text-gray-400' };
