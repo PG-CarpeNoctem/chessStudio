@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
@@ -51,21 +52,23 @@ function AnalysisPageComponent() {
 
   const updateBoardAtMove = useCallback((index: number) => {
     const newGame = new Chess();
-    newGame.loadPgn(analysis?.pgn || pgn);
-    const history = newGame.history({ verbose: true });
-    
-    const gameAtMove = new Chess();
-    for (let i = 0; i <= index; i++) {
-      if (history[i]) {
-        gameAtMove.move(history[i].san);
-      }
+    if (analysis) {
+        newGame.load(analysis.pgn);
+        const history = newGame.history({ verbose: true });
+        
+        const gameAtMove = new Chess();
+        for (let i = 0; i <= index; i++) {
+          if (history[i]) {
+            gameAtMove.move(history[i].san);
+          }
+        }
+        
+        setGame(gameAtMove);
+        setBoard(gameAtMove.board().flat().filter(p => p !== null));
     }
-    
-    setGame(gameAtMove);
-    setBoard(gameAtMove.board().flat().filter(p => p !== null));
     setCurrentMoveIndex(index);
 
-  }, [analysis, pgn]);
+  }, [analysis]);
 
   useEffect(() => {
     const pgnFromUrl = searchParams.get('pgn');
@@ -88,12 +91,18 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
-      const loaded = chess.loadPgn(pgnToAnalyze);
-      if (!loaded) {
-          throw new Error("Invalid PGN provided.");
+      // Use chess.load() which is more robust than loadPgn() and can handle PGNs with slight format variations.
+      // It also attempts to load FENs, so we must check for a valid game history.
+      chess.load(pgnToAnalyze, { sloppy: true });
+      
+      if (chess.history().length === 0) {
+        // If no moves were loaded, the input was either an invalid PGN or just a FEN string.
+        // The analysis flow requires a full game with moves to provide a meaningful report.
+        throw new Error("Invalid PGN or a FEN string was provided. Full game analysis requires a PGN with moves.");
       }
       
-      const result = await analyzeGame({ pgn: pgnToAnalyze, skillLevel: 'intermediate' });
+      // Pass the standardized PGN from chess.js to the analysis flow
+      const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
       updateBoardAtMove(result.analysis.length - 1); // Go to last move
     } catch (e: any) {
@@ -105,9 +114,16 @@ function AnalysisPageComponent() {
   };
 
   const currentMoveData = analysis?.analysis[currentMoveIndex];
-  const lastMove = useMemo(() => {
-      if (!analysis || currentMoveIndex < 0) return null;
-      return analysis.analysis[currentMoveIndex];
+  
+  const lastMoveForBoard = useMemo(() => {
+      if (!analysis || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
+      
+      const gameForMove = new Chess();
+      gameForMove.load(analysis.pgn);
+      const history = gameForMove.history({ verbose: true });
+      
+      return history[currentMoveIndex] || null;
+
   }, [analysis, currentMoveIndex]);
 
   if (isLoading) {
@@ -133,7 +149,7 @@ function AnalysisPageComponent() {
                     onSquareRightClick={() => {}}
                     selectedSquare={null}
                     possibleMoves={[]}
-                    lastMove={lastMove ? { from: lastMove.from, to: lastMove.to, san: lastMove.san } : null}
+                    lastMove={lastMoveForBoard ? { from: lastMoveForBoard.from, to: lastMoveForBoard.to, san: lastMoveForBoard.san } : null}
                     boardTheme="cyan"
                     showPossibleMoves={false}
                     showLastMoveHighlight={true}
@@ -251,7 +267,7 @@ function AnalysisPageComponent() {
                     value={pgn}
                     onChange={(e) => setPgn(e.target.value)}
                     rows={10}
-                    className="font-code"
+                    className="font-mono"
                 />
                 {error && <p className="text-destructive mt-2 text-sm">{error}</p>}
             </CardContent>
