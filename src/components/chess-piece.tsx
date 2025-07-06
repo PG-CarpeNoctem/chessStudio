@@ -14,7 +14,6 @@ const PIECE_PATHS: Record<PieceType['type'], string> = {
 const PieceSvg = ({ type, color }: { type: PieceType['type']; color: PieceType['color'] }) => (
   <svg viewBox="0 0 45 45" className="w-full h-full">
     <g
-      transform={color === 'w' ? 'translate(0, 45) scale(1, -1)' : ''}
       fill={color === 'b' ? '#3C3C3C' : '#FFFFFF'}
       stroke={color === 'b' ? '#000000' : '#2F2F2F'}
       strokeWidth="1.5"
