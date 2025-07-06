@@ -18,17 +18,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
 
-  const handleAuth = (e: React.FormEvent, type: 'login' | 'signup') => {
+  // State for login form
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // State for signup form
+  const [signupUsername, setSignupUsername] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd validate credentials against a backend here.
-    // For this demo, we'll just simulate a successful authentication.
-    if (type === 'signup') {
-        localStorage.setItem('username', username);
-    }
+    // In a real app, you'd validate credentials here. For this demo,
+    // we assume login is successful and just set the logged in flag.
+    // The username from a previous signup will be picked up automatically.
+    localStorage.setItem('isLoggedIn', 'true');
+    router.replace('/');
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, you'd create a new user here. For this demo,
+    // we just save the chosen username and set the logged in flag.
+    localStorage.setItem('username', signupUsername);
     localStorage.setItem('isLoggedIn', 'true');
     router.replace('/');
   };
@@ -49,7 +62,7 @@ export default function LoginPage() {
                 <TabsTrigger value="signup">Create Account</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
-                <form onSubmit={(e) => handleAuth(e, 'login')}>
+                <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
                         <Label htmlFor="login-email">Email</Label>
@@ -58,8 +71,8 @@ export default function LoginPage() {
                             type="email"
                             placeholder="player@example.com"
                             required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
                         />
                         </div>
                         <div className="space-y-2">
@@ -68,8 +81,8 @@ export default function LoginPage() {
                             id="login-password"
                             type="password"
                             required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
                         />
                         </div>
                     </CardContent>
@@ -81,7 +94,7 @@ export default function LoginPage() {
                 </form>
             </TabsContent>
             <TabsContent value="signup">
-                 <form onSubmit={(e) => handleAuth(e, 'signup')}>
+                 <form onSubmit={handleSignup}>
                     <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
                             <Label htmlFor="signup-username">Username</Label>
@@ -90,8 +103,8 @@ export default function LoginPage() {
                                 type="text"
                                 placeholder="PlayerOne"
                                 required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={signupUsername}
+                                onChange={(e) => setSignupUsername(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">
@@ -101,8 +114,8 @@ export default function LoginPage() {
                                 type="email"
                                 placeholder="player@example.com"
                                 required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                value={signupEmail}
+                                onChange={(e) => setSignupEmail(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">
@@ -111,8 +124,8 @@ export default function LoginPage() {
                                 id="signup-password"
                                 type="password"
                                 required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                value={signupPassword}
+                                onChange={(e) => setSignupPassword(e.target.value)}
                             />
                         </div>
                     </CardContent>
