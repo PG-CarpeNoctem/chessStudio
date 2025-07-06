@@ -19,7 +19,8 @@ import {
 } from './ui/select';
 import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
-import { analyzeGame, adjustDifficulty } from '@/ai/flows';
+import { analyzeGame } from '@/ai/flows/analyze-game';
+import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
 import { AlertCircle, BrainCircuit, Loader2, Play } from 'lucide-react';
 import { useState } from 'react';
