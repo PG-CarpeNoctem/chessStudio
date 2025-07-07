@@ -43,6 +43,8 @@ const setJsonSetting = (key: string, value: any) => {
   window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value }}));
 };
 
+type ChallengePrivacy = 'everyone' | 'friends' | 'nobody';
+
 export function SocialSettings() {
     const { toast } = useToast();
     
@@ -53,6 +55,8 @@ export function SocialSettings() {
         gameChatPrivacy: 'everyone' as GameChatPrivacy,
         blogUrl: '',
         blogTitle: '',
+        showOnlineStatus: true,
+        allowChallenges: 'everyone' as ChallengePrivacy,
     });
     const [initialState, setInitialState] = useState(settings);
     const [isClient, setIsClient] = useState(false);
@@ -70,6 +74,8 @@ export function SocialSettings() {
                 gameChatPrivacy: getJsonSetting<GameChatPrivacy>('chess:social:gameChatPrivacy', 'everyone'),
                 blogUrl: getJsonSetting<string>('chess:social:blogUrl', ''),
                 blogTitle: getJsonSetting<string>('chess:social:blogTitle', ''),
+                showOnlineStatus: getJsonSetting<boolean>('chess:social:showOnlineStatus', true),
+                allowChallenges: getJsonSetting<ChallengePrivacy>('chess:social:allowChallenges', 'everyone'),
             };
             setSettings(loadedSettings);
             setInitialState(loadedSettings);
@@ -111,6 +117,44 @@ export function SocialSettings() {
             <CardDescription>Manage your social, privacy, chat, and blog settings.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
+            <div className="space-y-6">
+                 <h3 className="text-lg font-medium">Privacy</h3>
+                 <div className="space-y-4 rounded-md border p-4">
+                     <div className="flex items-start justify-between">
+                        <Label htmlFor="online-status" className="font-semibold">
+                           Let others see your online status
+                        </Label>
+                        <Switch id="online-status" checked={settings.showOnlineStatus} onCheckedChange={(c) => setSettings(s => ({...s, showOnlineStatus: c}))} />
+                    </div>
+                    <Separator />
+                    <div>
+                        <Label className="font-semibold">Allow challenges from</Label>
+                        <p className="text-sm text-muted-foreground pb-2">Friends and challenges are coming soon!</p>
+                        <RadioGroup 
+                            value={settings.allowChallenges} 
+                            onValueChange={(value) => setSettings(s => ({ ...s, allowChallenges: value as ChallengePrivacy }))}
+                            className="pl-2 space-y-2"
+                            disabled // Disabled until feature is implemented
+                        >
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="everyone" id="chal-everyone" />
+                                <Label htmlFor="chal-everyone">Everyone</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="friends" id="chal-friends" />
+                                <Label htmlFor="chal-friends">Only friends</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="nobody" id="chal-nobody" />
+                                <Label htmlFor="chal-nobody">Nobody</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                 </div>
+            </div>
+
+            <Separator />
+            
             {/* Chat & Messaging */}
             <div className="space-y-6">
                 <h3 className="text-lg font-medium">Chat & Messaging</h3>

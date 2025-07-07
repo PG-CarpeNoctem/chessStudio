@@ -17,10 +17,14 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
+import type { ChessPiece, PieceSet } from '@/lib/types';
+import { CapturedPieces } from './captured-pieces';
+
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'time' | 'isMounted' | 'gameMode' | 'skillLevel'
+    'time' | 'isMounted' | 'gameMode' | 'skillLevel' | 'pieceSet' |
+    'capturedPieces' | 'showCapturedPieces'
 > & {
   className?: string;
 };
@@ -35,7 +39,7 @@ const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo }: { name: string, avatarSrc: string | null, isOpponent?: boolean, time: string, subtitle?: string | null, elo?: number }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo, capturedPiecesNode }: { name: string, avatarSrc: string | null, isOpponent?: boolean, time: string, subtitle?: string | null, elo?: number, capturedPiecesNode?: React.ReactNode }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center gap-3">
@@ -45,11 +49,11 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo }
             <AvatarFallback>{isOpponent ? <Bot className="h-5 w-5" /> : name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold">{name}</p>
-            <div className="flex items-baseline gap-2 text-sm text-muted-foreground">
-              {elo && <span>({elo})</span>}
-              {subtitle && <span className="text-xs">{subtitle}</span>}
+            <div className="flex items-baseline gap-2">
+              <p className="font-semibold truncate">{name}</p>
+              {elo && <span className="text-sm text-muted-foreground">({elo})</span>}
             </div>
+            {capturedPiecesNode}
           </div>
         </div>
         <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-3 py-1.5 flex-shrink-0">
@@ -63,7 +67,8 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo }
 
 export function AnalysisSidebar({ 
     pgn, history, isAITurn, getHint, gameOver, 
-    time, isMounted, gameMode, className, skillLevel
+    time, isMounted, gameMode, className, skillLevel,
+    pieceSet, capturedPieces, showCapturedPieces
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -137,6 +142,7 @@ export function AnalysisSidebar({
         time={formattedTimeB}
         subtitle={opponentSubtitle}
         elo={opponentElo}
+        capturedPiecesNode={showCapturedPieces ? <CapturedPieces capturedBy="b" allCaptured={capturedPieces} pieceSet={pieceSet} /> : null}
       />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
@@ -179,6 +185,7 @@ export function AnalysisSidebar({
         avatarSrc={avatar}
         time={formattedTimeW}
         elo={userElo}
+        capturedPiecesNode={showCapturedPieces ? <CapturedPieces capturedBy="w" allCaptured={capturedPieces} pieceSet={pieceSet} /> : null}
       />
       
       <Card className="bg-sidebar-accent border-sidebar-border">

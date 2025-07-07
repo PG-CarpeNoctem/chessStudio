@@ -14,7 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronsRight, Check, Volume2 } from 'lucide-react';
+import { ChevronsRight, Check, Volume2, Eye } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { AutoPromote } from '@/lib/types';
@@ -49,6 +49,7 @@ export function GameplaySettings() {
     enablePremove: true,
     confirmMove: false,
     enableSounds: true,
+    showCapturedPieces: true,
   });
   const [initialState, setInitialState] = useState(settings);
 
@@ -58,6 +59,7 @@ export function GameplaySettings() {
         enablePremove: getJsonSetting<boolean>('chess:enablePremove', true),
         confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
         enableSounds: getJsonSetting<boolean>('chess:enableSounds', true),
+        showCapturedPieces: getJsonSetting<boolean>('chess:showCapturedPieces', true),
       };
       setSettings(loadedSettings);
       setInitialState(loadedSettings);
@@ -109,6 +111,13 @@ export function GameplaySettings() {
                         <span className="flex items-center gap-2"><Volume2 className="h-4 w-4" /> Play sound for moves</span>
                     </Label>
                     <Switch id="enable-sounds" checked={settings.enableSounds} onCheckedChange={(c) => setSettings(s => ({...s, enableSounds: c}))} />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="show-captured-pieces" className="flex flex-col items-start gap-1">
+                        <span className="flex items-center gap-2"><Eye className="h-4 w-4" /> Show Captured Pieces</span>
+                    </Label>
+                    <Switch id="show-captured-pieces" checked={settings.showCapturedPieces} onCheckedChange={(c) => setSettings(s => ({...s, showCapturedPieces: c}))} />
                 </div>
             </div>
 

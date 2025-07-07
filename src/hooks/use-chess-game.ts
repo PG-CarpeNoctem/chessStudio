@@ -96,6 +96,7 @@ export const useChessGame = () => {
   const [autoPromoteTo, setAutoPromoteTo] = useState<AutoPromote>('q');
   const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
   const [enableSounds, setEnableSounds] = useState<boolean>(true);
+  const [showCapturedPieces, setShowCapturedPieces] = useState<boolean>(true);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -131,6 +132,7 @@ export const useChessGame = () => {
       setAutoPromoteTo(getSetting<AutoPromote>('chess:autoPromoteTo', 'q'));
       setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
       setEnableSounds(getSetting<boolean>('chess:enableSounds', true));
+      setShowCapturedPieces(getSetting<boolean>('chess:showCapturedPieces', true));
       _setTimeControl(getSetting<TimeControl>('chess:timeControl', { type: 'fischer', initial: 600, increment: 0 }));
       _setSkillLevel(getSetting<number>('chess:skillLevel', 4));
     };
@@ -661,12 +663,31 @@ export const useChessGame = () => {
 
   const canUndo = history.length > 0;
   const canRedo = redoStack.length > 0;
+  
+  const capturedPieces = useMemo(() => {
+    const captured: { w: ChessPiece[], b: ChessPiece[] } = { w: [], b: [] };
+    if (!history) return captured;
+    
+    for (const move of history) {
+        if (move.captured) {
+            const piece = { type: move.captured, color: move.color === 'w' ? 'b' : 'w' };
+            captured[piece.color].push(piece);
+        }
+    }
+
+    const pieceOrderValue = { q: 1, r: 2, b: 3, n: 4, p: 5 };
+    captured.w.sort((a, b) => pieceOrderValue[a.type] - pieceOrderValue[b.type]);
+    captured.b.sort((a, b) => pieceOrderValue[a.type] - pieceOrderValue[b.type]);
+
+    return captured;
+  }, [history]);
 
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, premove,
     customColors, showCoordinates, handlePieceDrop, 
     pendingMove, confirmMove, cancelMove,
     promotionMove, cancelPromotion, handlePromotion,
+    showCapturedPieces, capturedPieces,
     isMounted, // Expose isMounted for conditional rendering in parent
   };
 };
