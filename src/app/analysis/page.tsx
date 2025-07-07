@@ -76,7 +76,8 @@ function AnalysisPageComponent() {
   }, [analysis]);
 
   const handleAnalyze = async (pgnToAnalyze: string) => {
-    if (!pgnToAnalyze.trim()) {
+    const cleanedPgn = pgnToAnalyze.trim();
+    if (!cleanedPgn) {
       toast({ variant: 'destructive', title: 'Error', description: 'PGN input cannot be empty.' });
       return;
     }
@@ -86,13 +87,10 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
-      // The sloppy flag helps chess.js parse PGNs that might have minor formatting issues.
-      const pgnLoaded = chess.loadPgn(pgnToAnalyze, { sloppy: true });
+      const pgnLoaded = chess.loadPgn(cleanedPgn, { sloppy: true });
 
-      // If chess.js can't load the PGN or if there are no moves, it's considered invalid for analysis.
       if (!pgnLoaded || chess.history().length === 0) {
-        // A more robust check for FEN to provide a better error message.
-        const isFen = /^\s*([rnbqkp1-8]+\/){7}([rnbqkp1-8]+)\s[bw]\s(-|K?Q?k?q?)\s(-|[a-h][36])\s\d+\s\d+\s*$/.test(pgnToAnalyze);
+        const isFen = /^\s*([rnbqkp1-8]+\/){7}([rnbqkp1-8]+)\s[bw]\s(-|K?Q?k?q?)\s(-|[a-h][36])\s\d+\s\d+\s*$/.test(cleanedPgn);
         if (isFen) {
             throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
         }
