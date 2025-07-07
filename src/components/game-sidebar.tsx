@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -105,29 +106,31 @@ export function GameSidebar({
                     <CardHeader className='pb-3 pt-4'>
                         <CardTitle className='text-base'>Game Controls</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2 p-3 pt-0">
-                         <Button onClick={resetGame} size="sm">
-                            <Play />
-                            New Game
-                        </Button>
-                        <Button asChild variant="outline" size="sm">
-                            <Link href="/history">
-                                <ScrollText />
-                                Past Games
-                            </Link>
-                        </Button>
-                        <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
-                        <Undo2 />
-                        Undo
-                        </Button>
-                        <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
-                        <Redo2 />
-                        Redo
-                        </Button>
-                        <Button onClick={flipBoard} variant="outline" size="sm" className="col-span-2">
-                            <RefreshCw />
-                            Flip Board
-                        </Button>
+                    <CardContent className="p-3 pt-0">
+                         <div className="grid grid-cols-2 gap-2">
+                            <Button onClick={resetGame} size="sm">
+                                <Play />
+                                New Game
+                            </Button>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href="/history">
+                                    <ScrollText />
+                                    Past Games
+                                </Link>
+                            </Button>
+                            <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
+                            <Undo2 />
+                            Undo
+                            </Button>
+                            <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
+                            <Redo2 />
+                            Redo
+                            </Button>
+                            <Button onClick={flipBoard} variant="outline" size="sm" className="col-span-2">
+                                <RefreshCw />
+                                Flip Board
+                            </Button>
+                         </div>
                     </CardContent>
                 </Card>
             

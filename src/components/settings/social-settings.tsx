@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -17,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import type { DirectMessagePrivacy, GameChatPrivacy } from '@/lib/types';
+import { Skeleton } from '../ui/skeleton';
 
 // Helper function
 const getJsonSetting = <T,>(key: string, defaultValue: T): T => {
@@ -38,6 +40,7 @@ const setJsonSetting = (key: string, value: any) => {
   const stringifiedValue = JSON.stringify(value);
   localStorage.setItem(key, stringifiedValue);
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: stringifiedValue }));
+  window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value }}));
 };
 
 export function SocialSettings() {
@@ -56,17 +59,22 @@ export function SocialSettings() {
 
     useEffect(() => {
         setIsClient(true);
-        const loadedSettings = {
-            directMessages: getJsonSetting<boolean>('chess:social:directMessages', true),
-            directMessagesPrivacy: getJsonSetting<DirectMessagePrivacy>('chess:social:directMessagesPrivacy', 'everyone'),
-            gameChat: getJsonSetting<boolean>('chess:social:gameChat', true),
-            gameChatPrivacy: getJsonSetting<GameChatPrivacy>('chess:social:gameChatPrivacy', 'everyone'),
-            blogUrl: getJsonSetting<string>('chess:social:blogUrl', ''),
-            blogTitle: getJsonSetting<string>('chess:social:blogTitle', ''),
-        };
-        setSettings(loadedSettings);
-        setInitialState(loadedSettings);
     }, []);
+
+    useEffect(() => {
+        if (isClient) {
+            const loadedSettings = {
+                directMessages: getJsonSetting<boolean>('chess:social:directMessages', true),
+                directMessagesPrivacy: getJsonSetting<DirectMessagePrivacy>('chess:social:directMessagesPrivacy', 'everyone'),
+                gameChat: getJsonSetting<boolean>('chess:social:gameChat', true),
+                gameChatPrivacy: getJsonSetting<GameChatPrivacy>('chess:social:gameChatPrivacy', 'everyone'),
+                blogUrl: getJsonSetting<string>('chess:social:blogUrl', ''),
+                blogTitle: getJsonSetting<string>('chess:social:blogTitle', ''),
+            };
+            setSettings(loadedSettings);
+            setInitialState(loadedSettings);
+        }
+    }, [isClient]);
 
     const handleSave = () => {
         Object.entries(settings).forEach(([key, value]) => {
@@ -90,9 +98,7 @@ export function SocialSettings() {
                     <CardDescription>Manage your social, privacy, chat, and blog settings.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-center h-48 bg-muted/50 rounded-md">
-                        <p className="text-muted-foreground">Loading settings...</p>
-                    </div>
+                     <Skeleton className="h-48 w-full" />
                 </CardContent>
             </Card>
         );

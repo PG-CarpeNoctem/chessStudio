@@ -40,5 +40,3 @@ export type GameRecord = {
   black: string;
   result: string;
 };
-
-    

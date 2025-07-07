@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -133,7 +134,8 @@ export const useChessGame = () => {
     loadSettings();
 
     const handleSettingsChanged = (event: Event) => {
-        if (event instanceof StorageEvent || (event as CustomEvent).detail?.key.startsWith('chess:')) {
+        const key = (event as CustomEvent).detail?.key || (event as StorageEvent).key;
+        if (key && key.startsWith('chess:')) {
             loadSettings();
         }
     };
@@ -154,11 +156,13 @@ export const useChessGame = () => {
       checkSoundRef.current = new Audio('/sounds/check.mp3');
       gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
 
-      // Preload sounds
-      moveSoundRef.current.load();
-      captureSoundRef.current.load();
-      checkSoundRef.current.load();
-      gameOverSoundRef.current.load();
+      const sounds = [moveSoundRef.current, captureSoundRef.current, checkSoundRef.current, gameOverSoundRef.current];
+      sounds.forEach(sound => {
+          if (sound) {
+            sound.load();
+            sound.onerror = () => console.warn(`Could not load sound file.`);
+          }
+      });
     } else {
       // Clear refs if sounds are disabled
       moveSoundRef.current = null;
@@ -241,7 +245,7 @@ export const useChessGame = () => {
     setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
 
     if (g.isGameOver() || isGameOverMove) {
-      playSound('gameOver');
+      if (!gameOver) playSound('gameOver');
       setTimerOn(false);
       let status = 'Game Over';
       let winner = '';
@@ -290,24 +294,18 @@ export const useChessGame = () => {
         setGameOver(null);
         setPgn(g.pgn());
     }
-  }, [playSound]);
+  }, [playSound, gameOver]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     const g = gameRef.current;
     
-    // Use a copy to test the move without altering the main game state yet
-    const gameCopy = new Chess(g.fen());
-    const result = gameCopy.move(move);
+    const result = g.move(move);
 
     if (result === null) {
       console.error("Invalid move attempted: ", move);
-      // It's an illegal move, don't change the state.
-      // This can happen if AI suggests a bad move.
       return false;
     }
-
-    // If the move is valid, apply it to the main game instance
-    g.move(move);
+    
     setRedoStack([]); // Clear redo stack on new move
     const prevTurn = g.turn() === 'w' ? 'b' : 'w'; // Turn has already changed
     const isFirstMove = g.history().length === 1;
@@ -324,7 +322,7 @@ export const useChessGame = () => {
     setHint(null);
     
     // Timer logic on successful move
-    if ((isFirstMove || history.length === 0) && timeControl.type !== 'unlimited' && !g.isGameOver()) {
+    if (isFirstMove && timeControl.type !== 'unlimited' && !g.isGameOver()) {
         const initialMs = timeControl.initial * 1000;
         setTime({ w: initialMs, b: initialMs });
         setTimerOn(true);
@@ -338,7 +336,7 @@ export const useChessGame = () => {
         }, timeControl.increment * 1000);
     }
     return true;
-  }, [timeControl, updateGameState, playSound, history]);
+  }, [timeControl, updateGameState, playSound]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -346,12 +344,10 @@ export const useChessGame = () => {
   };
 
   const attemptMove = useCallback((move: { from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' }) => {
-      const gameCopy = new Chess(gameRef.current.fen());
-      const possibleMovesList = gameCopy.moves({ square: move.from, verbose: true });
-      const moveDetails = possibleMovesList.find(m => m.to === move.to);
+      const g = gameRef.current;
+      const moveDetails = g.moves({ square: move.from, verbose: true }).find(m => m.to === move.to);
       
       if (!moveDetails) {
-          // If the move is not possible, just reset selection
           resetMoveSelection();
           return;
       }
@@ -365,12 +361,14 @@ export const useChessGame = () => {
       }
 
       const moveWithPromotion = { ...move, promotion: move.promotion || (isPromotion ? (autoPromoteTo !== 'ask' ? autoPromoteTo : 'q') : undefined) };
-      const gameCopyForSan = new Chess(gameRef.current.fen());
+      
+      const gameCopyForSan = new Chess(g.fen());
       const moveResult = gameCopyForSan.move(moveWithPromotion);
+      if (!moveResult) return;
 
-      if (moveResult && confirmMoveEnabled) {
+      if (confirmMoveEnabled) {
           setPendingMove({ ...moveWithPromotion, san: moveResult.san });
-      } else if (moveResult) {
+      } else {
           makeMove(moveWithPromotion);
       }
       resetMoveSelection();
@@ -425,13 +423,21 @@ export const useChessGame = () => {
 
   const resetGame = useCallback(() => {
     const g = new Chess();
-    const username = (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || 'Player';
-    g.setHeader('White', username);
+    if (isMounted) {
+      const username = localStorage.getItem('username') || 'Player';
+      g.setHeader('White', username);
+    } else {
+      g.setHeader('White', 'Player');
+    }
+
     g.setHeader('Black', gameMode === 'ai' ? 'AI Opponent' : 'Player 2');
     g.setHeader('Date', new Date().toISOString().split('T')[0]);
     gameRef.current = g;
 
-    setTime({ w: Infinity, b: Infinity });
+    setTime({ w: timeControl.initial * 1000, b: timeControl.initial * 1000 });
+    if(timeControl.type === 'unlimited') {
+      setTime({w: Infinity, b: Infinity});
+    }
     setTimerOn(false);
 
     if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
@@ -444,176 +450,13 @@ export const useChessGame = () => {
     setPendingMove(null);
     setPromotionMove(null);
     setRedoStack([]);
-  }, [updateGameState, gameMode]);
+  }, [updateGameState, gameMode, isMounted, timeControl]);
 
-  useEffect(() => {
-    if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
-      const performAIMove = async () => {
-        setIsAITurn(true);
-        try {
-          const aiPromise = suggestMove({
-            boardStateFen: gameRef.current.fen(),
-            skillLevel,
-          });
-
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
-          );
-          
-          const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
-          
-          const moveSuccessful = makeMove(suggestedMove);
-          if (!moveSuccessful) {
-            throw new Error(`AI suggested an invalid move: ${suggestedMove}`);
-          }
-          
-          if (premove) {
-              const validMoves = gameRef.current.moves({verbose: true});
-              const isValidPremove = validMoves.some(m => m.from === premove.from && m.to === premove.to);
-
-              if (isValidPremove) {
-                  makeMove(premove);
-              }
-              setPremove(null);
-          }
-
-        } catch (error: any) {
-          console.error('AI move failed:', error);
-          toast({
-            variant: 'destructive',
-            title: 'AI Error',
-            description: error.message || 'The AI failed to make a move.',
-          });
-        } finally {
-          setIsAITurn(false);
-        }
-      };
-      const timeoutId = setTimeout(performAIMove, 500);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [turn, boardOrientation, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
-
-  const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver || promotionMove) return;
-
-    const g = gameRef.current;
-    const pieceOnSquare = g.get(square);
-    
-    // It is NOT the player's turn: Handle premoves
-    if (gameMode === 'ai' && g.turn() !== boardOrientation) {
-      if (enablePremove) {
-        if (selectedSquare) {
-          // A piece is already selected, so this click is the destination for the premove
-          const piece = g.get(selectedSquare);
-          if (piece && piece.color === boardOrientation) {
-            setPremove({ from: selectedSquare, to: square });
-          }
-          resetMoveSelection();
-        } else {
-          // No piece selected, so this click selects a piece for premoving
-          if (pieceOnSquare && pieceOnSquare.color === boardOrientation) {
-            setSelectedSquare(square);
-          }
-        }
-      }
-      return;
-    }
-    
-    // It IS the player's turn (or two-player mode)
-    if (g.turn() !== boardOrientation && gameMode === 'ai') {
-        return; // Not the player's turn in AI mode
-    }
-
-    if (selectedSquare) {
-      if (square === selectedSquare) {
-        resetMoveSelection();
-        return;
-      }
-      
-      const isPossible = possibleMoves.find(m => m.to === square);
-      if (isPossible) {
-        attemptMove({ from: selectedSquare, to: square });
-      } else if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
-        setSelectedSquare(square);
-        setPossibleMoves(g.moves({ square, verbose: true }));
-      } else {
-        resetMoveSelection();
-      }
-    } else {
-      if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
-        setSelectedSquare(square);
-        setPossibleMoves(g.moves({ square, verbose: true }));
-      }
-    }
-  }, [
-    boardOrientation,
-    enablePremove,
-    gameOver,
-    gameMode,
-    possibleMoves,
-    promotionMove,
-    selectedSquare,
-    attemptMove,
-  ]);
-  
-  const onSquareRightClick = useCallback(() => {
-    resetMoveSelection();
-    setPremove(null);
-  }, []);
-
-  const undoMove = useCallback(() => {
-    if (gameRef.current.history().length === 0) return;
-
-    const movesToUndo: ChessMove[] = [];
-    const undoneMove1 = gameRef.current.undo();
-    if (undoneMove1) {
-      movesToUndo.unshift(undoneMove1);
-    }
-
-    // In AI mode, if the first undone move was the AI's, undo the player's move too.
-    if (
-      gameMode === 'ai' &&
-      undoneMove1 &&
-      undoneMove1.color !== boardOrientation &&
-      gameRef.current.history().length > 0
-    ) {
-      const undoneMove2 = gameRef.current.undo();
-      if (undoneMove2) {
-        movesToUndo.unshift(undoneMove2);
-      }
-    }
-
-    if (movesToUndo.length > 0) {
-      setRedoStack((prev) => [movesToUndo, ...prev]);
-    }
-
-    updateGameState();
-    setHint(null);
-    setPremove(null);
-    resetMoveSelection();
-  }, [gameMode, boardOrientation, updateGameState]);
-
-  const redoMove = useCallback(() => {
-    if (redoStack.length === 0) return;
-
-    const newRedoStack = [...redoStack];
-    const movesToRedo = newRedoStack.shift();
-
-    if (movesToRedo) {
-      movesToRedo.forEach((move) => {
-        gameRef.current.move(move.san);
-      });
-    }
-
-    setRedoStack(newRedoStack);
-    updateGameState();
-  }, [redoStack, updateGameState]);
-  
   useEffect(() => {
     if (isMounted) {
       resetGame();
     }
-  }, [isMounted, gameMode, timeControl]); 
+  }, [isMounted, gameMode, timeControl, resetGame]); 
   
   useEffect(() => {
     if(isMounted) {
@@ -702,6 +545,153 @@ export const useChessGame = () => {
         })
     }
   }, [toast]);
+  
+  const onSquareClick = useCallback((square: ChessSquare) => {
+    if (gameOver || promotionMove) return;
+
+    const g = gameRef.current;
+    const pieceOnSquare = g.get(square);
+    
+    if (g.turn() !== boardOrientation && gameMode === 'ai') {
+      if (enablePremove && selectedSquare) {
+          setPremove({ from: selectedSquare, to: square });
+          resetMoveSelection();
+      } else if (enablePremove && pieceOnSquare && pieceOnSquare.color === boardOrientation) {
+          setSelectedSquare(square);
+      }
+      return;
+    }
+    
+    if (g.turn() !== pieceOnSquare?.color && !selectedSquare) return;
+
+    if (selectedSquare) {
+      if (square === selectedSquare) {
+        resetMoveSelection();
+        return;
+      }
+      
+      const moveDetails = g.moves({ square: selectedSquare, verbose: true }).find(m => m.to === square);
+
+      if (moveDetails) {
+        attemptMove({ from: selectedSquare, to: square });
+      } else if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
+        setSelectedSquare(square);
+        setPossibleMoves(g.moves({ square, verbose: true }));
+      } else {
+        resetMoveSelection();
+      }
+    } else {
+      if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
+        setSelectedSquare(square);
+        setPossibleMoves(g.moves({ square, verbose: true }));
+      }
+    }
+  }, [
+    gameOver, promotionMove, gameMode, boardOrientation, enablePremove, selectedSquare, attemptMove
+  ]);
+
+  const undoMove = useCallback(() => {
+    const g = gameRef.current;
+    if (g.history().length === 0) return;
+  
+    const movesToUndo: ChessMove[] = [];
+  
+    // Always undo at least one move
+    const lastMove = g.undo();
+    if (lastMove) {
+      movesToUndo.unshift(lastMove);
+    }
+  
+    // In AI mode, if the move undone was the AI's, undo the player's move too.
+    if (
+      gameMode === 'ai' &&
+      lastMove &&
+      lastMove.color !== boardOrientation &&
+      g.history().length > 0
+    ) {
+      const playerMove = g.undo();
+      if (playerMove) {
+        movesToUndo.unshift(playerMove);
+      }
+    }
+  
+    if (movesToUndo.length > 0) {
+      setRedoStack((prev) => [movesToUndo, ...prev]);
+    }
+  
+    updateGameState();
+    setHint(null);
+    setPremove(null);
+    resetMoveSelection();
+  }, [gameMode, boardOrientation, updateGameState]);
+  
+  const redoMove = useCallback(() => {
+    if (redoStack.length === 0) return;
+  
+    const newRedoStack = [...redoStack];
+    const movesToRedo = newRedoStack.shift();
+  
+    if (movesToRedo) {
+      movesToRedo.forEach((move) => {
+        gameRef.current.move(move.san);
+      });
+    }
+  
+    setRedoStack(newRedoStack);
+    updateGameState();
+  }, [redoStack, updateGameState]);
+
+  useEffect(() => {
+    if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
+      const performAIMove = async () => {
+        setIsAITurn(true);
+        try {
+          const aiPromise = suggestMove({
+            boardStateFen: gameRef.current.fen(),
+            skillLevel,
+          });
+
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
+          );
+          
+          const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
+          
+          const moveSuccessful = makeMove(suggestedMove);
+          if (!moveSuccessful) {
+            throw new Error(`AI suggested an invalid move: ${suggestedMove}`);
+          }
+          
+          if (premove) {
+              const validMoves = gameRef.current.moves({verbose: true});
+              const isValidPremove = validMoves.some(m => m.from === premove.from && m.to === premove.to);
+
+              if (isValidPremove) {
+                  makeMove(premove);
+              }
+              setPremove(null);
+          }
+
+        } catch (error: any) {
+          console.error('AI move failed:', error);
+          toast({
+            variant: 'destructive',
+            title: 'AI Error',
+            description: error.message || 'The AI failed to make a move.',
+          });
+        } finally {
+          setIsAITurn(false);
+        }
+      };
+      const timeoutId = setTimeout(performAIMove, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [turn, boardOrientation, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
+  
+  const onSquareRightClick = useCallback(() => {
+    resetMoveSelection();
+    setPremove(null);
+  }, []);
 
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 

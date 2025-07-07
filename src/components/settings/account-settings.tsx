@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -48,9 +49,14 @@ export function AccountSettings() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setUserEmail(getSetting('email', ''));
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      setUserEmail(getSetting('email', ''));
+    }
+  }, [isClient]);
 
   const handleChangePassword = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();

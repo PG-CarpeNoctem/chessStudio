@@ -317,5 +317,3 @@ input[type="color"]::-moz-color-swatch {
 .captured-piece svg g {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
 }
-
-    

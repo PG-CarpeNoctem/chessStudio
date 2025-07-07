@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -28,7 +29,7 @@ type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>,
 };
 
 const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
-    if (history.length === 0 && ms === Infinity) return '10:00'; // Default before game starts
+    if (historyLength === 0 && ms === Infinity) return '10:00'; // Default before game starts
     if (ms === Infinity) return '∞';
     if (isGameOver && ms <= 0) return "00:00";
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));

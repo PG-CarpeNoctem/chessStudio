@@ -43,6 +43,7 @@ const setJsonSetting = (key: string, value: any) => {
   const stringifiedValue = JSON.stringify(value);
   localStorage.setItem(key, stringifiedValue);
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: stringifiedValue }));
+  window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value }}));
 };
 
 const defaultCustomColors: CustomColors = {
