@@ -81,21 +81,25 @@ function AnalysisPageComponent() {
       toast({ variant: 'destructive', title: 'Error', description: 'PGN input cannot be empty.' });
       return;
     }
-    
-    setIsLoading(true);
-    setAnalysis(null);
 
     try {
       const chess = new Chess();
-      const pgnLoaded = chess.loadPgn(cleanedPgn, { sloppy: true });
+      // The `loadPgn` method in chess.js v1 throws an error on invalid PGN.
+      // We wrap this in a try...catch to handle validation.
+      chess.loadPgn(cleanedPgn, { sloppy: true });
 
-      if (!pgnLoaded || chess.history().length === 0) {
+      if (chess.history().length === 0) {
+        // If loading succeeds but there are no moves, it's likely just a FEN or incomplete PGN.
         const isFen = /^\s*([rnbqkp1-8]+\/){7}([rnbqkp1-8]+)\s[bw]\s(-|K?Q?k?q?)\s(-|[a-h][36])\s\d+\s\d+\s*$/.test(cleanedPgn);
         if (isFen) {
-            throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
+          throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
         }
         throw new Error("Invalid or incomplete PGN provided. Please check the game data and try again.");
       }
+
+      // If validation is successful, we can proceed.
+      setIsLoading(true);
+      setAnalysis(null);
       
       setPgnHeaders(chess.header());
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });

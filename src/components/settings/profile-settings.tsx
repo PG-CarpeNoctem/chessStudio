@@ -64,11 +64,6 @@ export function ProfileSettings() {
   const [initialState, setInitialState] = useState(settings);
   const [userEmail, setUserEmail] = useState('');
 
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
   useEffect(() => {
     const loadedState = {
         username: getSetting('username', 'Player'),
@@ -112,93 +107,6 @@ export function ProfileSettings() {
   
   const handleCancel = () => {
     setSettings(initialState);
-  };
-
-  const handleChangePassword = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        toast({
-            variant: 'destructive',
-            title: 'Password Change Failed',
-            description: 'Please fill in all password fields.',
-        });
-        return;
-    }
-    if (newPassword !== confirmPassword) {
-        toast({
-            variant: 'destructive',
-            title: 'Password Change Failed',
-            description: 'New passwords do not match.',
-        });
-        return;
-    }
-
-    try {
-        const loggedInEmail = localStorage.getItem('email');
-        if (!loggedInEmail) {
-            toast({
-                variant: 'destructive',
-                title: 'Authentication Error',
-                description: 'Could not find your user details. Please log in again.',
-            });
-            return;
-        }
-        
-        let users: any[] = [];
-        try {
-            const storedUsers = localStorage.getItem('pgchess_users');
-            if (storedUsers) {
-                const parsed = JSON.parse(storedUsers);
-                if (Array.isArray(parsed)) {
-                    users = parsed;
-                }
-            }
-        } catch (err) {
-            console.error("Could not parse users from localStorage", err);
-            toast({ variant: 'destructive', title: 'Error', description: 'User data is corrupted. Please try signing out and in again.' });
-            return;
-        }
-
-        const userIndex = users.findIndex((u: any) => u.email === loggedInEmail);
-
-        if (userIndex === -1) {
-            toast({
-                variant: 'destructive',
-                title: 'Password Change Failed',
-                description: 'User account not found.',
-            });
-            return;
-        }
-
-        const user = users[userIndex];
-        if (user.password !== currentPassword) {
-            toast({
-                variant: 'destructive',
-                title: 'Password Change Failed',
-                description: 'Incorrect current password.',
-            });
-            return;
-        }
-
-        users[userIndex].password = newPassword;
-        localStorage.setItem('pgchess_users', JSON.stringify(users));
-
-        toast({
-            title: 'Password Changed',
-            description: 'Your password has been successfully updated.',
-        });
-        
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-    } catch (error) {
-        console.error('Password change error:', error);
-        toast({
-            variant: 'destructive',
-            title: 'An error occurred',
-            description: 'Could not change your password.',
-        });
-    }
   };
   
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,32 +228,6 @@ export function ProfileSettings() {
                   <Input id="twitchUrl" placeholder="https://twitch.tv/username" value={settings.twitchUrl} onChange={e => setSettings(s => ({ ...s, twitchUrl: e.target.value }))} />
               </div>
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-              <h3 className="text-lg font-medium">Change Password</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-                  </div>
-                  <div></div> {/* Spacer */}
-                  <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-                  </div>
-              </div>
-              <div className="flex justify-start">
-                  <Button type="button" variant="secondary" onClick={handleChangePassword}>
-                      Change Password
-                  </Button>
-              </div>
           </div>
 
         </CardContent>

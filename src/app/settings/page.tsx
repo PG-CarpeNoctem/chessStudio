@@ -7,6 +7,7 @@ import { ProfileSettings } from '@/components/settings/profile-settings';
 import { BoardPiecesSettings } from '@/components/settings/board-pieces-settings';
 import { GameplaySettings } from '@/components/settings/gameplay-settings';
 import { SocialSettings } from '@/components/settings/social-settings';
+import { AccountSettings } from '@/components/settings/account-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -27,19 +28,19 @@ const ComingSoon = ({ title }: { title: string }) => (
 
 // --- Main Settings Page Component ---
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('social');
+  const [activeTab, setActiveTab] = useState('profile');
 
   const navItems = [
+    { id: 'profile', label: 'Profile', icon: UserCircle, component: <ProfileSettings /> },
+    { id: 'account', label: 'Account', icon: Shield, component: <AccountSettings /> },
     { id: 'board-pieces', label: 'Board & Pieces', icon: Palette, component: <BoardPiecesSettings /> },
     { id: 'gameplay', label: 'Gameplay', icon: Gamepad2, component: <GameplaySettings /> },
-    { id: 'profile', label: 'Profile', icon: UserCircle, component: <ProfileSettings /> },
-    { id: 'interface', label: 'Interface', icon: Laptop, component: <ComingSoon title="Interface" /> },
     { id: 'social', label: 'Social', icon: Users, component: <SocialSettings /> },
     { id: 'coach', label: 'Coach', icon: LifeBuoy, component: <ComingSoon title="Coach" /> },
     { id: 'notifications', label: 'Notifications', icon: Bell, component: <ComingSoon title="Notifications" /> },
-    { id: 'account', label: 'Account', icon: Shield, component: <ComingSoon title="Account" /> },
     { id: 'membership', label: 'Membership', icon: Gem, component: <ComingSoon title="Membership" /> },
     { id: 'accessibility', label: 'Accessibility', icon: Accessibility, component: <ComingSoon title="Accessibility" /> },
+    { id: 'interface', label: 'Interface', icon: Laptop, component: <ComingSoon title="Interface" /> },
   ];
   
   const activeComponent = navItems.find(item => item.id === activeTab)?.component;
