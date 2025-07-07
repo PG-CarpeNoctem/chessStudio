@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import type { ChessPiece } from '@/lib/types';
 import Link from 'next/link';
 import { ChessPieceDisplay } from './chess-piece';
+import { Skeleton } from './ui/skeleton';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
@@ -26,8 +27,9 @@ type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>,
   className?: string;
 };
 
-const formatTime = (ms: number) => {
-    if (ms === Infinity) return '∞';
+const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
+    if (ms === Infinity || historyLength === 0) return '∞';
+    if (isGameOver && ms <= 0) return "00:00";
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -37,18 +39,17 @@ const formatTime = (ms: number) => {
 const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: number }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-8 w-8">
             <AvatarImage src={avatarSrc || (isOpponent ? 'https://placehold.co/40x40.png' : 'https://placehold.co/40x40.png')} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
             <AvatarFallback>{name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="font-semibold">{name}</span>
-            {(capturedPieces.length > 0 || materialAdvantage > 0) &&
-              <div className="flex items-center gap-0.5 h-5 mt-0.5">
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold truncate">{name}</span>
+            <div className="flex items-center gap-1 h-5 mt-0.5 flex-wrap overflow-hidden">
                 {capturedPieces.map((p, i) => (
-                  <div key={i} className="w-4 h-4 text-white">
+                  <div key={i} className="w-4 h-4 text-white captured-piece">
                     <ChessPieceDisplay piece={p} pieceSet="classic" />
                   </div>
                 ))}
@@ -57,12 +58,11 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
                     +{materialAdvantage}
                   </span>
                 }
-              </div>
-            }
+            </div>
           </div>
         </div>
-        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1">
-          {formatTime(time)}
+        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1 flex-shrink-0">
+          {time}
         </div>
       </div>
     </CardContent>
@@ -75,8 +75,15 @@ export function AnalysisSidebar({
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+      setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const updateUserState = () => {
         const storedUsername = localStorage.getItem('username');
         if (storedUsername) {
@@ -96,7 +103,7 @@ export function AnalysisSidebar({
     return () => {
       window.removeEventListener('profileChanged', updateUserState);
     };
-  }, []);
+  }, [isMounted]);
 
   const handleCopyPgn = () => {
     if (pgn) {
@@ -116,6 +123,21 @@ export function AnalysisSidebar({
   const playerAdvantage = materialAdvantage > 0 ? materialAdvantage : 0;
   const opponentAdvantage = materialAdvantage < 0 ? Math.abs(materialAdvantage) : 0;
   
+  const formattedTimeW = formatTime(time.w, !!gameOver, history.length);
+  const formattedTimeB = formatTime(time.b, !!gameOver, history.length);
+
+  if (!isMounted) {
+    return (
+      <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
+        <Skeleton className="h-[76px] w-full" />
+        <Skeleton className="flex-1 w-full" />
+        <Skeleton className="h-[76px] w-full" />
+        <Skeleton className="h-[68px] w-full" />
+        <Skeleton className="h-[48px] w-full" />
+      </aside>
+    );
+  }
+
   return (
     <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <PlayerCard 
@@ -124,7 +146,7 @@ export function AnalysisSidebar({
         isOpponent={true} 
         capturedPieces={opponentCapturedPieces}
         materialAdvantage={opponentAdvantage}
-        time={time.b}
+        time={formattedTimeB}
       />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
@@ -167,7 +189,7 @@ export function AnalysisSidebar({
         avatarSrc={avatar}
         capturedPieces={playerCapturedPieces}
         materialAdvantage={playerAdvantage}
-        time={time.w}
+        time={formattedTimeW}
       />
       
       <Card className="bg-sidebar-accent border-sidebar-border">
@@ -200,3 +222,5 @@ export function AnalysisSidebar({
     </aside>
   )
 }
+
+    

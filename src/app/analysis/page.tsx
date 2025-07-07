@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote } from 'lucide-react';
+import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare, ChessMove } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,11 +28,12 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
   Excellent: { icon: ThumbsUp, className: 'text-green-500', label: 'Excellent' },
   Good: { icon: Check, className: 'text-lime-400', label: 'Good' },
   Book: { icon: BookOpen, className: 'text-gray-400', label: 'Book' },
+  Forced: { icon: Target, className: 'text-indigo-400', label: 'Forced' },
   Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500', label: 'Inaccuracy' },
   Mistake: { icon: AlertCircle, className: 'text-orange-500', label: 'Mistake' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600', label: 'Blunder' },
 };
-const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Book', 'Inaccuracy', 'Mistake', 'Blunder'];
+const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Book', 'Forced', 'Inaccuracy', 'Mistake', 'Blunder'];
 
 
 const chartConfig = {
@@ -46,7 +47,7 @@ function AnalysisLoadingState({ progress }: { progress: number }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-center h-96">
       <h2 className="text-2xl font-semibold">Evaluating your game...</h2>
-      <p className="text-muted-foreground">Analyzing key moments, inaccuracies, and brilliant moves.</p>
+      <p className="text-muted-foreground">Our AI is charting the peaks and valleys of every move.</p>
       <div className="w-full max-w-md mt-4">
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground mt-2">
@@ -80,7 +81,12 @@ function AnalysisPageComponent() {
     if (!analysis || !analysis.pgn) return;
     
     const gameForReplay = new Chess();
-    gameForReplay.loadPgn(analysis.pgn);
+    try {
+        gameForReplay.loadPgn(analysis.pgn);
+    } catch {
+        // PGN already validated, should not fail
+        return;
+    }
     const history = gameForReplay.history({ verbose: true });
     
     const boardAtMove = new Chess();
@@ -144,6 +150,7 @@ function AnalysisPageComponent() {
   useEffect(() => {
     if (pgnFromUrl) {
       const decodedPgn = decodeURIComponent(pgnFromUrl);
+      setPgn(decodedPgn);
       handleAnalyze(decodedPgn);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +160,10 @@ function AnalysisPageComponent() {
       if (!analysis || !analysis.pgn || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
       
       const gameForMove = new Chess();
-      gameForReplay.loadPgn(analysis.pgn);
+      try {
+        gameForMove.loadPgn(analysis.pgn);
+      } catch { return null; }
+
       const history = gameForMove.history({ verbose: true });
       
       return history[currentMoveIndex] || null;
@@ -179,12 +189,12 @@ function AnalysisPageComponent() {
                     className="font-mono"
                 />
             </CardContent>
-            <CardContent>
-                 <Button onClick={() => handleAnalyze(pgn)} disabled={isLoading} className="w-full">
-                    <BrainCircuit className="mr-2 h-4 w-4" />
+            <CardFooter>
+                 <Button onClick={() => handleAnalyze(pgn)} disabled={isLoading || !pgn} className="w-full">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
                     Analyze
                 </Button>
-            </CardContent>
+            </CardFooter>
         </Card>
     </div>
     );
@@ -431,3 +441,5 @@ export default function AnalysisPageSuspenseWrapper() {
     </Suspense>
   );
 }
+
+    

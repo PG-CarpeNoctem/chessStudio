@@ -23,7 +23,7 @@ const AnalyzedMoveSchema = z.object({
   moveNumber: z.number().describe('The move number in the game.'),
   player: z.enum(['White', 'Black']).describe('The player who made the move.'),
   san: z.string().describe("The move in Standard Algebraic Notation (e.g., e4, Nf3)."),
-  classification: z.enum(['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Book', 'Inaccuracy', 'Mistake', 'Blunder']).describe("The classification of the move."),
+  classification: z.enum(['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Book', 'Inaccuracy', 'Mistake', 'Blunder', 'Forced']).describe("The classification of the move."),
   explanation: z.string().describe("An explanation for why the move was classified this way."),
   evaluation: z.number().describe("The centipawn evaluation of the position after the move. Positive is good for White, negative for Black."),
 });
@@ -38,6 +38,7 @@ const MoveCountsSchema = z.object({
   inaccuracy: z.number().default(0),
   mistake: z.number().default(0),
   blunder: z.number().default(0),
+  forced: z.number().default(0),
 });
 
 const AnalyzeGameOutputSchema = z.object({
@@ -80,11 +81,12 @@ Your output must be a JSON object that includes:
     - **Excellent (👍)**: A strong move that maintains a significant advantage or is the best move in a complex position, but not particularly hard to find.
     - **Good**: A solid, developing move that is decent but not the best.
     - **Book**: A standard, theoretical opening move.
+    - **Forced**: A move that is the only reasonable option to avoid a significant disadvantage (e.g., the only move that doesn't result in immediate material loss or checkmate).
     - **Inaccuracy (?)**: A move that is not the best and leads to a slight but noticeable worsening of the position (e.g., a 50-90 centipawn loss from a better alternative).
     - **Mistake (??)**: A bad move that significantly worsens the position, such as losing material or a major positional advantage (e.g., a 90-200 centipawn loss).
     - **Blunder (???)**: A very bad move that throws away a winning position or leads to a losing one, such as losing a major piece or getting checkmated (e.g., a >200 centipawn loss).
 3.  **accuracies**: An object with 'white' and 'black' keys, containing accuracy percentages (0-100) for each player. Base this on how often they played the best or a very good move.
-4.  **moveCounts**: An object with 'white' and 'black' keys. For each player, provide a count of how many moves fell into each classification (Brilliant, Great, Best, Excellent, Good, Book, Inaccuracy, Mistake, Blunder).
+4.  **moveCounts**: An object with 'white' and 'black' keys. For each player, provide a count of how many moves fell into each classification (Brilliant, Great, Best, Excellent, Good, Book, Forced, Inaccuracy, Mistake, Blunder).
 5.  **opening**: A string with the name of the opening played.
 `,
 });
@@ -99,3 +101,5 @@ const analyzeGameFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

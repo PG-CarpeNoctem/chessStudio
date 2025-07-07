@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay, AutoPromote } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay, AutoPromote, GameRecord } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -99,10 +99,18 @@ export const useChessGame = () => {
 
     loadSettings();
 
-    moveSoundRef.current = new Audio('/sounds/move-self.mp3');
-    captureSoundRef.current = new Audio('/sounds/capture.mp3');
-    checkSoundRef.current = new Audio('/sounds/check.mp3');
-    gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
+    // Preload sounds
+    if (typeof window !== 'undefined') {
+        moveSoundRef.current = new Audio('/sounds/move-self.mp3');
+        captureSoundRef.current = new Audio('/sounds/capture.mp3');
+        checkSoundRef.current = new Audio('/sounds/check.mp3');
+        gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
+        moveSoundRef.current.load();
+        captureSoundRef.current.load();
+        checkSoundRef.current.load();
+        gameOverSoundRef.current.load();
+    }
+
 
     window.addEventListener('storage', loadSettings);
     return () => window.removeEventListener('storage', loadSettings);
@@ -117,10 +125,13 @@ export const useChessGame = () => {
         case 'check': audio = checkSoundRef.current; break;
         case 'gameOver': audio = gameOverSoundRef.current; break;
       }
-      audio?.play().catch(e => console.error(`Error playing ${sound} sound:`, e));
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.error(`Error playing ${sound} sound:`, e));
+      }
   }, [enableSounds]);
 
-  const updateGameState = useCallback(() => {
+  const updateGameState = useCallback((isGameOverMove: boolean = false) => {
     const g = gameRef.current;
     
     const newBoardState: BoardState = [];
@@ -177,7 +188,7 @@ export const useChessGame = () => {
     setCapturedPieces(captured);
     setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
 
-    if (g.isGameOver()) {
+    if (g.isGameOver() || isGameOverMove) {
       playSound('gameOver');
       setTimerOn(false);
       let status = 'Game Over';
@@ -195,20 +206,47 @@ export const useChessGame = () => {
       } else if (g.isThreefoldRepetition()) {
         status = 'Threefold Repetition';
         g.setHeader('Result', '1/2-1/2');
+      } else if (isGameOverMove) { // Timeout case
+        status = 'Timeout';
+        winner = g.turn() === 'w' ? 'Black' : 'White';
+        g.setHeader('Result', winner === 'White' ? '1-0' : '0-1');
       }
+
+      const finalPgn = g.pgn();
       setGameOver({ status, winner });
+      setPgn(finalPgn);
+
+      // Save game to history
+      const gameRecord: GameRecord = {
+          pgn: finalPgn,
+          date: new Date().toISOString(),
+          white: g.header()['White'] || 'White',
+          black: g.header()['Black'] || 'Black',
+          result: g.header()['Result'] || '*',
+      };
+      
+      try {
+          const pastGamesRaw = localStorage.getItem('pgchess_history');
+          const pastGames: GameRecord[] = pastGamesRaw ? JSON.parse(pastGamesRaw) : [];
+          pastGames.unshift(gameRecord); // Add to the beginning
+          localStorage.setItem('pgchess_history', JSON.stringify(pastGames.slice(0, 50))); // Keep last 50 games
+      } catch (e) {
+          console.error("Failed to save game history", e);
+      }
+
     } else {
         setGameOver(null);
+        setPgn(g.pgn());
     }
-    
-    setPgn(g.pgn());
   }, [playSound]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     try {
       const g = gameRef.current;
+      const isFirstMove = g.history().length === 0;
       const prevTurn = g.turn();
       const result = g.move(move);
+      
       if (result) {
         if (result.flags.includes('c')) playSound('capture');
         else playSound('move');
@@ -222,17 +260,15 @@ export const useChessGame = () => {
         setHint(null);
         
         // Timer logic on successful move
-        setTimerOn(false);
-        if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+        if (isFirstMove && timeControl.type !== 'unlimited') {
+            setTimerOn(true);
+        }
 
-        if (timeControl.type !== 'unlimited' && !g.isGameOver()) {
-            if (timeControl.type === 'delay') {
-                timerDelayRef.current = setTimeout(() => {
-                    setTimerOn(true);
-                }, timeControl.increment * 1000);
-            } else {
+        if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+        if (timeControl.type === 'delay' && !g.isGameOver()) {
+            timerDelayRef.current = setTimeout(() => {
                 setTimerOn(true);
-            }
+            }, timeControl.increment * 1000);
         }
         return true;
       }
@@ -328,7 +364,10 @@ export const useChessGame = () => {
 
     const initialMs = timeControl.type === 'unlimited' ? Infinity : timeControl.initial * 1000;
     setTime({ w: initialMs, b: initialMs });
+    setTimerOn(false);
 
+    if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+    
     updateGameState();
     resetMoveSelection();
     setIsAITurn(false);
@@ -337,13 +376,6 @@ export const useChessGame = () => {
     setPendingMove(null);
     setPromotionMove(null);
     
-    setTimerOn(timeControl.type !== 'unlimited');
-    if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
-    if (timeControl.type === 'delay') {
-        setTimerOn(false);
-        timerDelayRef.current = setTimeout(() => setTimerOn(true), timeControl.increment * 1000);
-    }
-
   }, [updateGameState, timeControl, gameMode]);
 
   useEffect(() => {
@@ -391,7 +423,10 @@ export const useChessGame = () => {
     if (g.turn() !== boardOrientation && gameMode === 'ai') {
       if (enablePremove) {
           if (selectedSquare) {
-              setPremove({ from: selectedSquare, to: square });
+              const piece = g.get(selectedSquare);
+              if (piece && piece.color === boardOrientation) {
+                setPremove({ from: selectedSquare, to: square });
+              }
               resetMoveSelection();
           } else {
               const piece = g.get(square);
@@ -442,7 +477,8 @@ export const useChessGame = () => {
   
   useEffect(() => {
     updateGameState();
-  }, [updateGameState]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!timerOn || gameOver || timeControl.type === 'unlimited') {
@@ -456,8 +492,7 @@ export const useChessGame = () => {
 
         if (newTimeForPlayer <= 0) {
           clearInterval(interval);
-          setGameOver({ status: 'Timeout', winner: currentTurn === 'w' ? 'Black' : 'White' });
-          setTimerOn(false);
+          updateGameState(true); // pass true to indicate timeout
           return { ...prevTime, [currentTurn]: 0 };
         }
         return { ...prevTime, [currentTurn]: newTimeForPlayer };
@@ -465,7 +500,7 @@ export const useChessGame = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, timeControl.type]);
+  }, [timerOn, gameOver, timeControl.type, updateGameState]);
 
 
   const getHint = useCallback(async () => {
@@ -529,3 +564,5 @@ export const useChessGame = () => {
     promotionMove, cancelPromotion, handlePromotion,
   };
 };
+
+    

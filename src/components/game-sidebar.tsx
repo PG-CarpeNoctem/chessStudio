@@ -20,7 +20,7 @@ import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
 import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil } from 'lucide-react';
+import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil, ScrollText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
 import type { TimeControl } from '@/lib/types';
@@ -126,10 +126,18 @@ export function GameSidebar({
                         <CardTitle className='text-base'>Game Controls</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2 p-3 pt-0">
-                        <Button onClick={resetGame} size="sm">
-                            <Play className="mr-2" />
-                            New Game
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                             <Button onClick={resetGame} size="sm">
+                                <Play className="mr-2" />
+                                New Game
+                            </Button>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href="/history">
+                                    <ScrollText className="mr-2" />
+                                    History
+                                </Link>
+                            </Button>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                             <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
                             <Undo2 className="mr-2" />
@@ -250,3 +258,5 @@ export function GameSidebar({
     </aside>
   );
 }
+
+    

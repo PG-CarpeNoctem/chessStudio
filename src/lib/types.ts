@@ -32,3 +32,13 @@ export type CustomColors = {
   selected1: string;
   selected2: string;
 };
+
+export type GameRecord = {
+  pgn: string;
+  date: string;
+  white: string;
+  black: string;
+  result: string;
+};
+
+    

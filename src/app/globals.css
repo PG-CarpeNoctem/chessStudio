@@ -312,3 +312,10 @@ input[type="color"]::-webkit-color-swatch {
 input[type="color"]::-moz-color-swatch {
   @apply rounded-md border border-input;
 }
+
+/* Captured piece visibility fix */
+.captured-piece svg g {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+}
+
+    
