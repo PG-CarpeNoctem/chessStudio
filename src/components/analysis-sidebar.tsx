@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -10,7 +9,7 @@ import {
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { BrainCircuit, Loader2, Lightbulb, ClipboardCopy } from 'lucide-react';
+import { BrainCircuit, Loader2, Lightbulb, ClipboardCopy, Bot } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import React from 'react';
 import { cn } from '@/lib/utils';
@@ -22,13 +21,14 @@ import { Skeleton } from './ui/skeleton';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'capturedPieces' | 'materialAdvantage' | 'time' | 'isMounted'
+    'capturedPieces' | 'materialAdvantage' | 'time' | 'isMounted' |
+    'aiPersonality' | 'gameMode'
 > & {
   className?: string;
 };
 
 const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
-    if (historyLength === 0) return '10:00'; // Default display before game starts
+    if (history.length === 0 && ms === Infinity) return '10:00'; // Default before game starts
     if (ms === Infinity) return '∞';
     if (isGameOver && ms <= 0) return "00:00";
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -37,17 +37,18 @@ const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: string }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time, subtitle }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: string, subtitle?: string | null }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-8 w-8">
             <AvatarImage src={avatarSrc || undefined} alt={name} />
-            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+            <AvatarFallback>{isOpponent ? <Bot className="h-5 w-5" /> : name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col min-w-0">
             <span className="font-semibold truncate">{name}</span>
+            {subtitle && <span className="text-xs text-muted-foreground truncate">{subtitle}</span>}
             <div className="flex items-center gap-1 h-5 mt-0.5 flex-wrap overflow-hidden">
                 {capturedPieces.map((p, i) => (
                   <div key={i} className="w-4 h-4 text-white captured-piece">
@@ -72,7 +73,7 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
 
 export function AnalysisSidebar({ 
     pgn, history, isAITurn, getHint, gameOver, capturedPieces, 
-    materialAdvantage, time, isMounted, className 
+    materialAdvantage, time, isMounted, aiPersonality, gameMode, className 
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -125,6 +126,9 @@ export function AnalysisSidebar({
   const formattedTimeW = formatTime(time.w, !!gameOver, history.length);
   const formattedTimeB = formatTime(time.b, !!gameOver, history.length);
 
+  const opponentName = gameMode === 'ai' ? 'AI Opponent' : 'Player 2';
+  const opponentSubtitle = gameMode === 'ai' ? `Style: ${aiPersonality}` : null;
+
   if (!isMounted) {
     return (
       <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
@@ -140,12 +144,13 @@ export function AnalysisSidebar({
   return (
     <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
       <PlayerCard 
-        name="AI Opponent" 
+        name={opponentName}
         avatarSrc={null} 
         isOpponent={true} 
         capturedPieces={opponentCapturedPieces}
         materialAdvantage={opponentAdvantage}
         time={formattedTimeB}
+        subtitle={opponentSubtitle}
       />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
@@ -198,7 +203,7 @@ export function AnalysisSidebar({
         <CardContent className='p-3 pt-0'>
             <Button 
             onClick={getHint} 
-            disabled={isAITurn || !!gameOver} 
+            disabled={isAITurn || !!gameOver || gameMode !== 'ai'} 
             className="w-full"
             variant="outline"
             >

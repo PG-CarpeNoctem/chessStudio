@@ -1,10 +1,10 @@
-
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay, AutoPromote, GameRecord } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
+import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import { useToast } from './use-toast';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
@@ -72,10 +72,11 @@ export const useChessGame = () => {
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
   const [skillLevel, setSkillLevel] = useState(4);
+  const [aiPersonality, setAiPersonality] = useState('Balanced');
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   
   const [timeControl, _setTimeControl] = useState<TimeControl>({ type: 'fischer', initial: 600, increment: 0 });
-  const [time, setTime] = useState({ w: 600000, b: 600000 });
+  const [time, setTime] = useState({ w: Infinity, b: Infinity });
   const [timerOn, setTimerOn] = useState(false);
   const timerDelayRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -289,7 +290,7 @@ export const useChessGame = () => {
         setGameOver(null);
         setPgn(g.pgn());
     }
-  }, [playSound, boardOrientation]);
+  }, [playSound]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     const g = gameRef.current;
@@ -323,7 +324,9 @@ export const useChessGame = () => {
     setHint(null);
     
     // Timer logic on successful move
-    if (isFirstMove && timeControl.type !== 'unlimited' && !g.isGameOver()) {
+    if ((isFirstMove || history.length === 0) && timeControl.type !== 'unlimited' && !g.isGameOver()) {
+        const initialMs = timeControl.initial * 1000;
+        setTime({ w: initialMs, b: initialMs });
         setTimerOn(true);
     }
 
@@ -335,7 +338,7 @@ export const useChessGame = () => {
         }, timeControl.increment * 1000);
     }
     return true;
-  }, [timeControl, updateGameState, playSound]);
+  }, [timeControl, updateGameState, playSound, history]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -428,8 +431,7 @@ export const useChessGame = () => {
     g.setHeader('Date', new Date().toISOString().split('T')[0]);
     gameRef.current = g;
 
-    const initialMs = timeControl.type === 'unlimited' ? Infinity : timeControl.initial * 1000;
-    setTime({ w: initialMs, b: initialMs });
+    setTime({ w: Infinity, b: Infinity });
     setTimerOn(false);
 
     if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
@@ -442,7 +444,7 @@ export const useChessGame = () => {
     setPendingMove(null);
     setPromotionMove(null);
     setRedoStack([]);
-  }, [updateGameState, timeControl, gameMode]);
+  }, [updateGameState, gameMode]);
 
   useEffect(() => {
     if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
@@ -589,7 +591,7 @@ export const useChessGame = () => {
     setHint(null);
     setPremove(null);
     resetMoveSelection();
-  }, [gameMode, boardOrientation, updateGameState, redoStack]);
+  }, [gameMode, boardOrientation, updateGameState]);
 
   const redoMove = useCallback(() => {
     if (redoStack.length === 0) return;
@@ -621,7 +623,7 @@ export const useChessGame = () => {
   }, [isMounted]);
 
   useEffect(() => {
-    if (!timerOn || gameOver || timeControl.type === 'unlimited' || !isMounted) {
+    if (!timerOn || gameOver || timeControl.type === 'unlimited' || !isMounted || history.length === 0) {
       return;
     }
 
@@ -640,7 +642,7 @@ export const useChessGame = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, timeControl.type, updateGameState, isMounted]);
+  }, [timerOn, gameOver, timeControl.type, updateGameState, isMounted, history]);
 
 
   const getHint = useCallback(async () => {
@@ -683,6 +685,24 @@ export const useChessGame = () => {
     setBoardOrientation(prev => (prev === 'w' ? 'b' : 'w'));
   }, []);
 
+  const handleAdjustDifficulty = useCallback(async (level: 'Beginner' | 'Intermediate' | 'Advanced') => {
+    try {
+        const result = await adjustDifficulty({ difficultyLevel: level });
+        setSkillLevel(result.stockfishLevel);
+        setAiPersonality(result.personality);
+        toast({
+            title: `Difficulty set to ${level}`,
+            description: `AI Skill Level: ${result.stockfishLevel}. ${result.description}`,
+        })
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to adjust AI difficulty.',
+        })
+    }
+  }, [toast]);
+
   const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
   const kingInCheck = useMemo(() => {
@@ -698,7 +718,7 @@ export const useChessGame = () => {
   const canRedo = redoStack.length > 0;
 
   return {
-    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
+    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, handleAdjustDifficulty, aiPersonality, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
     customColors, showCoordinates, handlePieceDrop, 
     pendingMove, confirmMove, cancelMove,
     promotionMove, cancelPromotion, handlePromotion,

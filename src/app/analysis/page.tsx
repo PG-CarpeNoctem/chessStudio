@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target } from 'lucide-react';
+import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare, ChessMove } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -289,6 +288,23 @@ function AnalysisPageComponent() {
                               <p className="text-sm text-muted-foreground">{analysis.summary}</p>
                           </CardContent>
                       </Card>
+
+                      {analysis.keyMoments && analysis.keyMoments.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2"><Zap className="text-yellow-400" /> Key Moments</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {analysis.keyMoments.map((moment, index) => (
+                                    <div key={index} className="text-sm p-2 rounded-md hover:bg-muted cursor-pointer" onClick={() => updateBoardAtMove(moment.moveNumber -1)}>
+                                        <p className="font-semibold">{moment.moveNumber}. {moment.player === 'White' ? '' : '...'}{moment.san}</p>
+                                        <p className="text-muted-foreground">{moment.description}</p>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                      )}
+
                       <Card>
                           <CardHeader>
                               <CardTitle className="text-lg">Accuracies</CardTitle>

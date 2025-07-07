@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -18,10 +17,8 @@ import {
 } from './ui/select';
 import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
-import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import type { useChessGame } from '@/hooks/use-chess-game';
 import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil, ScrollText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { Switch } from './ui/switch';
 import type { TimeControl } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -31,7 +28,7 @@ import { Input } from './ui/input';
 import Link from 'next/link';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
-    'resetGame' | 'skillLevel' | 'setSkillLevel' | 'flipBoard' | 'undoMove' | 'redoMove' |
+    'resetGame' | 'skillLevel' | 'handleAdjustDifficulty' | 'flipBoard' | 'undoMove' | 'redoMove' |
     'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl'
 > & {
     className?: string;
@@ -45,7 +42,7 @@ const formatTimeControlToString = (tc: TimeControl): string => {
 export function GameSidebar({
   resetGame,
   skillLevel,
-  setSkillLevel,
+  handleAdjustDifficulty,
   flipBoard,
   undoMove,
   redoMove,
@@ -57,7 +54,6 @@ export function GameSidebar({
   setTimeControl,
   className,
 }: GameSidebarProps) {
-  const { toast } = useToast();
   const [isCustomTimeDialogOpen, setIsCustomTimeDialogOpen] = useState(false);
   
   // State for the custom time dialog
@@ -81,22 +77,6 @@ export function GameSidebar({
     setTimeControl({ type: 'fischer', initial: minutes * 60, increment: increment || 0 });
   };
 
-  const handleAdjustDifficulty = async (level: 'Beginner' | 'Intermediate' | 'Advanced') => {
-    try {
-        const result = await adjustDifficulty({ difficultyLevel: level });
-        setSkillLevel(result.stockfishLevel);
-        toast({
-            title: `Difficulty set to ${level}`,
-            description: `AI Skill Level: ${result.stockfishLevel}. ${result.description}`,
-        })
-    } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to adjust AI difficulty.',
-        })
-    }
-  };
 
   return (
     <aside className={cn("w-[260px] flex-shrink-0 flex h-full flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border", className)}>

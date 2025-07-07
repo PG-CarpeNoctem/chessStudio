@@ -28,6 +28,9 @@ const AdjustDifficultyOutputSchema = z.object({
   description: z
     .string()
     .describe('A description of the AI opponent at this difficulty level.'),
+  personality: z
+    .string()
+    .describe('A short (2-3 word) description of the AI\'s playing style or personality.'),
 });
 
 export type AdjustDifficultyOutput = z.infer<typeof AdjustDifficultyOutputSchema>;
@@ -47,9 +50,9 @@ You will adjust the difficulty of the AI opponent based on the player's chosen d
 Difficulty Level: {{{difficultyLevel}}}
 
 Based on the difficulty level, determine the appropriate Stockfish level (a number between 0 and 20, where 0 is the easiest and 20 is the hardest).
-Also, provide a short description of the AI opponent at this difficulty level.
+Also, provide a short description of the AI opponent at this difficulty level, and a 2-3 word "personality" for the AI (e.g., "Aggressive Attacker", "Positional Strategist", "Tricky Tactician").
 
-Output should be a JSON object with 'stockfishLevel' and 'description' fields.  The description should not be longer than 50 words.
+Output should be a JSON object with 'stockfishLevel', 'description', and 'personality' fields.  The description should not be longer than 50 words.
 `, config: {
     safetySettings: [
       {

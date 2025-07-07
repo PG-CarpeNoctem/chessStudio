@@ -41,6 +41,13 @@ const MoveCountsSchema = z.object({
   forced: z.number().default(0),
 });
 
+const KeyMomentSchema = z.object({
+    moveNumber: z.number().describe("The move number of this key moment."),
+    san: z.string().describe("The move in Standard Algebraic Notation."),
+    player: z.enum(['White', 'Black']).describe('The player who made the move.'),
+    description: z.string().describe("A brief explanation of why this moment was critical or a turning point in the game."),
+});
+
 const AnalyzeGameOutputSchema = z.object({
   pgn: z.string().describe("The PGN that was analyzed, returned for consistency."),
   summary: z.string().describe("A brief, high-level summary of the game's outcome and key turning points."),
@@ -53,7 +60,8 @@ const AnalyzeGameOutputSchema = z.object({
       white: MoveCountsSchema,
       black: MoveCountsSchema,
   }).describe("A count of each move classification for both White and Black."),
-  opening: z.string().describe("The name of the opening played, e.g., 'Sicilian Defense' or 'Queen's Gambit Declined'.")
+  opening: z.string().describe("The name of the opening played, e.g., 'Sicilian Defense' or 'Queen's Gambit Declined'."),
+  keyMoments: z.array(KeyMomentSchema).describe("A list of 2-4 key turning points or critical moments in the game."),
 });
 export type AnalyzeGameOutput = z.infer<typeof AnalyzeGameOutputSchema>;
 
@@ -88,6 +96,7 @@ Your output must be a JSON object that includes:
 3.  **accuracies**: An object with 'white' and 'black' keys, containing accuracy percentages (0-100) for each player. Base this on how often they played the best or a very good move.
 4.  **moveCounts**: An object with 'white' and 'black' keys. For each player, provide a count of how many moves fell into each classification (Brilliant, Great, Best, Excellent, Good, Book, Forced, Inaccuracy, Mistake, Blunder).
 5.  **opening**: A string with the name of the opening played.
+6.  **keyMoments**: An array of 2 to 4 objects, each representing a critical turning point in the game. Each object should include the move number, the move in SAN, the player who made the move, and a brief description of why it was a pivotal moment.
 `,
 });
 
