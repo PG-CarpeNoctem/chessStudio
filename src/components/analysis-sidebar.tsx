@@ -15,15 +15,12 @@ import { useEffect, useState } from 'react';
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import type { ChessPiece } from '@/lib/types';
 import Link from 'next/link';
-import { ChessPieceDisplay } from './chess-piece';
 import { Skeleton } from './ui/skeleton';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'capturedPieces' | 'materialAdvantage' | 'time' | 'isMounted' |
-    'aiPersonality' | 'gameMode'
+    'time' | 'isMounted' | 'gameMode'
 > & {
   className?: string;
 };
@@ -38,7 +35,7 @@ const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time, subtitle }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: string, subtitle?: string | null }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle }: { name: string, avatarSrc: string | null, isOpponent?: boolean, time: string, subtitle?: string | null }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center gap-2">
@@ -50,18 +47,6 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
           <div className="flex flex-col min-w-0">
             <span className="font-semibold truncate">{name}</span>
             {subtitle && <span className="text-xs text-muted-foreground truncate">{subtitle}</span>}
-            <div className="flex items-center gap-1 h-5 mt-0.5 flex-wrap overflow-hidden">
-                {capturedPieces.map((p, i) => (
-                  <div key={i} className="w-4 h-4 text-white captured-piece">
-                    <ChessPieceDisplay piece={p} pieceSet="classic" />
-                  </div>
-                ))}
-                {materialAdvantage > 0 &&
-                  <span className="text-xs font-bold text-lime-400/90 ml-1">
-                    +{materialAdvantage}
-                  </span>
-                }
-            </div>
           </div>
         </div>
         <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1 flex-shrink-0">
@@ -73,8 +58,8 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
 );
 
 export function AnalysisSidebar({ 
-    pgn, history, isAITurn, getHint, gameOver, capturedPieces, 
-    materialAdvantage, time, isMounted, aiPersonality, gameMode, className 
+    pgn, history, isAITurn, getHint, gameOver, 
+    time, isMounted, gameMode, className 
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -117,27 +102,20 @@ export function AnalysisSidebar({
     movePairs.push([history[i], history[i + 1]]);
   }
 
-  // PlayerOne is white, AI Opponent is black.
-  const playerCapturedPieces = capturedPieces.w; // White player captures black pieces.
-  const opponentCapturedPieces = capturedPieces.b; // Black player captures white pieces.
-  
-  const playerAdvantage = materialAdvantage > 0 ? materialAdvantage : 0;
-  const opponentAdvantage = materialAdvantage < 0 ? Math.abs(materialAdvantage) : 0;
-  
   const formattedTimeW = formatTime(time.w, !!gameOver, history.length);
   const formattedTimeB = formatTime(time.b, !!gameOver, history.length);
 
   const opponentName = gameMode === 'ai' ? 'AI Opponent' : 'Player 2';
-  const opponentSubtitle = gameMode === 'ai' ? `Style: ${aiPersonality}` : null;
+  const opponentSubtitle = gameMode === 'ai' ? `Ready for a challenge!` : null;
 
   if (!isMounted) {
     return (
       <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
-        <Skeleton className="h-[76px] w-full" />
+        <Skeleton className="h-[60px] w-full" />
         <Skeleton className="flex-1 w-full" />
-        <Skeleton className="h-[76px] w-full" />
-        <Skeleton className="h-[68px] w-full" />
-        <Skeleton className="h-[48px] w-full" />
+        <Skeleton className="h-[60px] w-full" />
+        <Skeleton className="h-[100px] w-full" />
+        <Skeleton className="h-[60px] w-full" />
       </aside>
     );
   }
@@ -148,8 +126,6 @@ export function AnalysisSidebar({
         name={opponentName}
         avatarSrc={null} 
         isOpponent={true} 
-        capturedPieces={opponentCapturedPieces}
-        materialAdvantage={opponentAdvantage}
         time={formattedTimeB}
         subtitle={opponentSubtitle}
       />
@@ -192,8 +168,6 @@ export function AnalysisSidebar({
       <PlayerCard 
         name={username} 
         avatarSrc={avatar}
-        capturedPieces={playerCapturedPieces}
-        materialAdvantage={playerAdvantage}
         time={formattedTimeW}
       />
       

@@ -27,9 +27,10 @@ import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import Link from 'next/link';
+import { Slider } from './ui/slider';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
-    'resetGame' | 'skillLevel' | 'handleAdjustDifficulty' | 'flipBoard' | 'undoMove' | 'redoMove' |
+    'resetGame' | 'skillLevel' | 'setSkillLevel' | 'flipBoard' | 'undoMove' | 'redoMove' |
     'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl'
 > & {
     className?: string;
@@ -43,7 +44,7 @@ const formatTimeControlToString = (tc: TimeControl): string => {
 export function GameSidebar({
   resetGame,
   skillLevel,
-  handleAdjustDifficulty,
+  setSkillLevel,
   flipBoard,
   undoMove,
   redoMove,
@@ -215,19 +216,19 @@ export function GameSidebar({
                             />
                         </div>
                         {gameMode === 'ai' && (
-                            <div className="space-y-1">
-                            <Label htmlFor="difficulty" className="text-xs">AI Difficulty</Label>
-                            <Select onValueChange={(value: 'Beginner' | 'Intermediate' | 'Advanced') => handleAdjustDifficulty(value)} defaultValue="Beginner">
-                                <SelectTrigger id="difficulty" className="h-9">
-                                <SelectValue placeholder="Select difficulty" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                <SelectItem value="Beginner">Beginner</SelectItem>
-                                <SelectItem value="Intermediate">Intermediate</SelectItem>
-                                <SelectItem value="Advanced">Advanced</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground pt-1">Current AI Skill: {skillLevel}</p>
+                            <div className="space-y-2">
+                                <Label htmlFor="difficulty" className="text-xs flex justify-between">
+                                    <span>AI Skill Level</span>
+                                    <span>{skillLevel}</span>
+                                </Label>
+                                <Slider
+                                    id="difficulty"
+                                    min={0}
+                                    max={20}
+                                    step={1}
+                                    value={[skillLevel]}
+                                    onValueChange={(value) => setSkillLevel(value[0])}
+                                />
                             </div>
                         )}
                     </CardContent>

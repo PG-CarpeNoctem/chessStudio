@@ -5,7 +5,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay, AutoPromote, GameRecord } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
-import { adjustDifficulty } from '@/ai/flows/adjust-difficulty';
 import { useToast } from './use-toast';
 
 type BoardState = { square: ChessSquare; piece: ChessPiece }[];
@@ -72,8 +71,7 @@ export const useChessGame = () => {
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
-  const [skillLevel, setSkillLevel] = useState(4);
-  const [aiPersonality, setAiPersonality] = useState('Balanced');
+  const [skillLevel, _setSkillLevel] = useState(4);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   
   const [timeControl, _setTimeControl] = useState<TimeControl>({ type: 'fischer', initial: 600, increment: 0 });
@@ -82,8 +80,6 @@ export const useChessGame = () => {
   const timerDelayRef = useRef<NodeJS.Timeout | null>(null);
   
   const [hint, setHint] = useState<ChessMove | null>(null);
-  const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
-  const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
   const [promotionMove, setPromotionMove] = useState<{ from: ChessSquare; to: ChessSquare } | null>(null);
@@ -104,6 +100,13 @@ export const useChessGame = () => {
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  const setSkillLevel = useCallback((value: number) => {
+    _setSkillLevel(value);
+    if (typeof window !== 'undefined') {
+      setJsonSetting('chess:skillLevel', value);
+    }
   }, []);
 
   const setTimeControl = useCallback((value: TimeControl) => {
@@ -129,6 +132,7 @@ export const useChessGame = () => {
       setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
       setEnableSounds(getSetting<boolean>('chess:enableSounds', true));
       _setTimeControl(getSetting<TimeControl>('chess:timeControl', { type: 'fischer', initial: 600, increment: 0 }));
+      _setSkillLevel(getSetting<number>('chess:skillLevel', 4));
     };
 
     loadSettings();
@@ -202,47 +206,6 @@ export const useChessGame = () => {
     setHistory(g.history({verbose: true}));
     
     setTurn(g.turn());
-    
-    const initialPieceSet: { [key in ChessPiece['type']]: number } = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-    const currentPieceCounts: { [c in PlayerColor]: { [pt in ChessPiece['type']]: number } } = {
-      w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
-      b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 },
-    };
-    newBoardState.forEach(p => { currentPieceCounts[p.piece.color][p.piece.type]++; });
-
-    const captured: { w: ChessPiece[]; b: ChessPiece[] } = { w: [], b: [] };
-    let whiteMaterialOnBoard = 0;
-    let blackMaterialOnBoard = 0;
-    
-    for (const color of ['w', 'b'] as PlayerColor[]) {
-      for (const p_type in initialPieceSet) {
-          const type = p_type as ChessPiece['type'];
-          const initialCount = initialPieceSet[type];
-          const currentCount = currentPieceCounts[color][type];
-          const capturedCount = initialCount - currentCount;
-
-          if (capturedCount > 0) {
-              for (let i = 0; i < capturedCount; i++) {
-                  if (color === 'w') {
-                      captured.b.push({ type, color: 'w' });
-                  } else {
-                      captured.w.push({ type, color: 'b' });
-                  }
-              }
-          }
-          if (color === 'w') {
-            whiteMaterialOnBoard += currentCount * pieceValues[type];
-          } else {
-            blackMaterialOnBoard += currentCount * pieceValues[type];
-          }
-      }
-    }
-    
-    const sortPieces = (a: ChessPiece, b: ChessPiece) => pieceValues[b.type] - pieceValues[a.type];
-    captured.w.sort(sortPieces);
-    captured.b.sort(sortPieces);
-    setCapturedPieces(captured);
-    setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
 
     if (g.isGameOver() || isGameOverMove) {
       if (!gameOver) playSound('gameOver');
@@ -527,24 +490,6 @@ export const useChessGame = () => {
   const flipBoard = useCallback(() => {
     setBoardOrientation(prev => (prev === 'w' ? 'b' : 'w'));
   }, []);
-
-  const handleAdjustDifficulty = useCallback(async (level: 'Beginner' | 'Intermediate' | 'Advanced') => {
-    try {
-        const result = await adjustDifficulty({ difficultyLevel: level });
-        setSkillLevel(result.stockfishLevel);
-        setAiPersonality(result.personality);
-        toast({
-            title: `Difficulty set to ${level}`,
-            description: `AI Skill Level: ${result.stockfishLevel}. ${result.description}`,
-        })
-    } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to adjust AI difficulty.',
-        })
-    }
-  }, [toast]);
   
   const onSquareClick = useCallback((square: ChessSquare) => {
     if (gameOver || promotionMove) return;
@@ -708,7 +653,7 @@ export const useChessGame = () => {
   const canRedo = redoStack.length > 0;
 
   return {
-    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, handleAdjustDifficulty, aiPersonality, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
+    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, premove,
     customColors, showCoordinates, handlePieceDrop, 
     pendingMove, confirmMove, cancelMove,
     promotionMove, cancelPromotion, handlePromotion,
