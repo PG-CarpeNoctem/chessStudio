@@ -234,7 +234,7 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
     };
 
     setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'classic'));
-    setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'cburnett'));
+    setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
 
     const showElo = localStorage.getItem('chess:showEstimatedElo');
     setShowEstimatedElo(showElo ? JSON.parse(showElo) : true);
@@ -409,7 +409,7 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                                     const blackCount = analysis.moveCounts.black[key.toLowerCase().replace(' ', '') as keyof typeof analysis.moveCounts.black] || 0;
                                     if(whiteCount === 0 && blackCount === 0) return null;
                                     return (
-                                        <TableRow key={i} className="border-b-stone-700 hover:bg-stone-700/50">
+                                        <TableRow key={key} className="border-b-stone-700 hover:bg-stone-700/50">
                                             <TableCell className="font-medium p-1.5 w-1/3">{whiteCount}</TableCell>
                                             <TableCell className="text-center p-1.5">
                                                 <div className="flex items-center justify-center gap-2">
