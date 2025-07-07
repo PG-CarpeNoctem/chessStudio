@@ -134,7 +134,7 @@ export function GameSidebar({
                             <Button asChild variant="outline" size="sm">
                                 <Link href="/history">
                                     <ScrollText className="mr-2" />
-                                    History
+                                    Past Games
                                 </Link>
                             </Button>
                         </div>
@@ -258,5 +258,3 @@ export function GameSidebar({
     </aside>
   );
 }
-
-    

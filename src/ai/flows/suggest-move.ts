@@ -41,7 +41,7 @@ const prompt = ai.definePrompt({
 
 You will be given the current state of the board in Forsyth–Edwards Notation (FEN). You will also be given the skill level of the AI opponent.
 
-Based on the board state, suggest the best move for the AI opponent. Prioritize moves that lead to checkmate or a significant material advantage. Your primary goal is to win the game.
+Based on the board state, suggest the best move for the AI opponent. Prioritize moves that lead to checkmate or a significant material advantage. Your primary goal is to win the game. You must respond very quickly, ideally in under 3 seconds.
 
 Skill level: {{{skillLevel}}}
 

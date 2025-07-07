@@ -49,6 +49,7 @@ export const useChessGame = () => {
 
   const [board, setBoard] = useState<BoardState>([]);
   const [history, setHistory] = useState<readonly ChessMove[]>([]);
+  const [redoStack, setRedoStack] = useState<ChessMove[][]>([]);
   const [turn, setTurn] = useState<PlayerColor>('w');
   const [pgn, setPgn] = useState('');
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
@@ -240,10 +241,11 @@ export const useChessGame = () => {
         setGameOver(null);
         setPgn(g.pgn());
     }
-  }, [playSound]);
+  }, [playSound, boardOrientation]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     try {
+      setRedoStack([]); // Clear redo stack on new move
       const g = gameRef.current;
       const isFirstMove = g.history().length === 0;
       const prevTurn = g.turn();
@@ -291,7 +293,14 @@ export const useChessGame = () => {
       const gameCopy = new Chess(gameRef.current.fen());
       const possibleMovesList = gameCopy.moves({ square: move.from, verbose: true });
       const moveDetails = possibleMovesList.find(m => m.to === move.to);
-      const isPromotion = moveDetails?.flags.includes('p');
+      
+      if (!moveDetails) {
+          // If the move is not possible, just reset selection
+          resetMoveSelection();
+          return;
+      }
+
+      const isPromotion = moveDetails.flags.includes('p');
 
       if (isPromotion && autoPromoteTo === 'ask') {
           setPromotionMove({ from: move.from, to: move.to });
@@ -379,7 +388,7 @@ export const useChessGame = () => {
     setPremove(null);
     setPendingMove(null);
     setPromotionMove(null);
-    
+    setRedoStack([]);
   }, [updateGameState, timeControl, gameMode]);
 
   useEffect(() => {
@@ -387,10 +396,17 @@ export const useChessGame = () => {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
-          const { suggestedMove } = await suggestMove({
+          const aiPromise = suggestMove({
             boardStateFen: gameRef.current.fen(),
             skillLevel,
           });
+
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
+          );
+          
+          const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
+          
           makeMove(suggestedMove);
           
           if (premove) {
@@ -403,12 +419,12 @@ export const useChessGame = () => {
               setPremove(null);
           }
 
-        } catch (error) {
+        } catch (error: any) {
           console.error('AI move failed:', error);
           toast({
             variant: 'destructive',
             title: 'AI Error',
-            description: 'The AI failed to make a move.',
+            description: error.message || 'The AI failed to make a move.',
           });
         } finally {
           setIsAITurn(false);
@@ -494,20 +510,51 @@ export const useChessGame = () => {
 
   const undoMove = useCallback(() => {
     if (gameRef.current.history().length === 0) return;
-    
-    gameRef.current.undo();
-    if (gameMode === 'ai' && gameRef.current.history().length > 0 && gameRef.current.turn() !== boardOrientation) {
-      gameRef.current.undo();
+
+    const movesToUndo: ChessMove[] = [];
+    const undoneMove1 = gameRef.current.undo();
+    if (undoneMove1) {
+      movesToUndo.unshift(undoneMove1);
     }
+
+    // In AI mode, if the first undone move was the AI's, undo the player's move too.
+    if (
+      gameMode === 'ai' &&
+      undoneMove1 &&
+      undoneMove1.color !== boardOrientation &&
+      gameRef.current.history().length > 0
+    ) {
+      const undoneMove2 = gameRef.current.undo();
+      if (undoneMove2) {
+        movesToUndo.unshift(undoneMove2);
+      }
+    }
+
+    if (movesToUndo.length > 0) {
+      setRedoStack((prev) => [movesToUndo, ...prev]);
+    }
+
     updateGameState();
     setHint(null);
     setPremove(null);
     resetMoveSelection();
-  }, [updateGameState, gameMode, boardOrientation]);
+  }, [gameMode, boardOrientation, updateGameState, redoStack]);
 
   const redoMove = useCallback(() => {
-    toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
-  }, [toast]);
+    if (redoStack.length === 0) return;
+
+    const newRedoStack = [...redoStack];
+    const movesToRedo = newRedoStack.shift();
+
+    if (movesToRedo) {
+      movesToRedo.forEach((move) => {
+        gameRef.current.move(move.san);
+      });
+    }
+
+    setRedoStack(newRedoStack);
+    updateGameState();
+  }, [redoStack, updateGameState]);
   
   useEffect(() => {
     resetGame();
@@ -593,7 +640,7 @@ export const useChessGame = () => {
   }, [pgn, turn]);
 
   const canUndo = history.length > 0;
-  const canRedo = false;
+  const canRedo = redoStack.length > 0;
 
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
@@ -602,6 +649,3 @@ export const useChessGame = () => {
     promotionMove, cancelPromotion, handlePromotion,
   };
 };
-
-
-    
