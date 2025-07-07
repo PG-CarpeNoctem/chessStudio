@@ -462,6 +462,7 @@ export const useChessGame = () => {
     try {
       const { suggestedMove, explanation } = await suggestMove({
         boardStateFen: gameRef.current.fen(),
+        legalMoves: gameRef.current.moves(),
         skillLevel: 20,
       });
 
@@ -588,47 +589,56 @@ export const useChessGame = () => {
 
   useEffect(() => {
     if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
-      const performAIMove = async () => {
+      const performAIMoveWithRetries = async () => {
         setIsAITurn(true);
-        try {
-          const aiPromise = suggestMove({
-            boardStateFen: gameRef.current.fen(),
-            skillLevel,
-          });
+        for (let i = 0; i < 3; i++) {
+          try {
+            const legalMoves = gameRef.current.moves();
+            if (legalMoves.length === 0) {
+              setIsAITurn(false);
+              return;
+            }
 
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
-          );
-          
-          const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
-          
-          const moveSuccessful = makeMove(suggestedMove);
-          if (!moveSuccessful) {
-            throw new Error(`AI suggested an invalid move: ${suggestedMove}`);
-          }
-          
-          if (premove) {
-              const validMoves = gameRef.current.moves({verbose: true});
-              const isValidPremove = validMoves.some(m => m.from === premove.from && m.to === premove.to);
+            const aiPromise = suggestMove({
+              boardStateFen: gameRef.current.fen(),
+              legalMoves: legalMoves,
+              skillLevel,
+            });
 
-              if (isValidPremove) {
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
+            );
+
+            const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
+            const moveSuccessful = makeMove(suggestedMove);
+            
+            if (moveSuccessful) {
+              if (premove) {
+                const validPremove = gameRef.current.moves({ verbose: true }).some(m => m.from === premove.from && m.to === premove.to);
+                if (validPremove) {
                   makeMove(premove);
+                }
+                setPremove(null);
               }
-              setPremove(null);
+              setIsAITurn(false);
+              return; // Success, exit function
+            } else {
+              console.warn(`AI suggested an invalid move: ${suggestedMove}. Retrying... Attempt ${i + 1}`);
+            }
+          } catch (error: any) {
+            console.error(`AI move attempt ${i + 1} failed:`, error);
           }
+        }
 
-        } catch (error: any) {
-          console.error('AI move failed:', error);
-          toast({
+        toast({
             variant: 'destructive',
             title: 'AI Error',
-            description: error.message || 'The AI failed to make a move.',
-          });
-        } finally {
-          setIsAITurn(false);
-        }
+            description: 'The AI is having trouble finding a move. Please try again.',
+        });
+        setIsAITurn(false);
       };
-      const timeoutId = setTimeout(performAIMove, 500);
+
+      const timeoutId = setTimeout(performAIMoveWithRetries, 500);
       return () => clearTimeout(timeoutId);
     }
   }, [turn, boardOrientation, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
