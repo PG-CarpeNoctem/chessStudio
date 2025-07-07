@@ -2,92 +2,132 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Chess } from 'chess.js';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap } from 'lucide-react';
+import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap, RotateCw, Settings, Share2, ArrowLeft, Bot, Users } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare, ChessMove } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const classificationStyles: Record<string, { icon: React.ElementType, className: string, label: string }> = {
   Brilliant: { icon: Gem, className: 'text-cyan-400', label: 'Brilliant' },
-  Great: { icon: Star, className: 'text-sky-500', label: 'Great' },
-  Best: { icon: Star, className: 'text-green-500', label: 'Best Move' },
-  Excellent: { icon: ThumbsUp, className: 'text-green-500', label: 'Excellent' },
-  Good: { icon: Check, className: 'text-lime-400', label: 'Good' },
-  Book: { icon: BookOpen, className: 'text-gray-400', label: 'Book' },
-  Forced: { icon: Target, className: 'text-indigo-400', label: 'Forced' },
+  Critical: { icon: Zap, className: 'text-blue-500', label: 'Critical' },
+  Best: { icon: Star, className: 'text-green-500', label: 'Best' },
+  Excellent: { icon: ThumbsUp, className: 'text-teal-400', label: 'Excellent' },
+  Okay: { icon: Check, className: 'text-lime-400', label: 'Okay' },
+  Theory: { icon: BookOpen, className: 'text-gray-400', label: 'Theory' },
   Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500', label: 'Inaccuracy' },
   Mistake: { icon: AlertCircle, className: 'text-orange-500', label: 'Mistake' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600', label: 'Blunder' },
+  Forced: { icon: Target, className: 'text-indigo-400', label: 'Forced' },
+  // Map old values to new ones if they appear
+  Great: { icon: Zap, className: 'text-blue-500', label: 'Critical' },
+  Good: { icon: Check, className: 'text-lime-400', label: 'Okay' },
+  Book: { icon: BookOpen, className: 'text-gray-400', label: 'Theory' },
 };
-const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Book', 'Forced', 'Inaccuracy', 'Mistake', 'Blunder'];
+const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Critical', 'Best', 'Excellent', 'Okay', 'Theory', 'Inaccuracy', 'Mistake', 'Blunder'];
 
 
 const chartConfig = {
   evaluation: {
     label: "Evaluation",
-    color: "hsl(var(--primary))",
+    color: "hsl(var(--foreground))",
   },
 } satisfies ChartConfig;
 
-function AnalysisLoadingState({ progress }: { progress: number }) {
+const renderEvalBar = (evaluation: number | undefined) => {
+    if (evaluation === undefined) {
+        return <div className="bg-white/50" style={{ height: '50%' }} />;
+    }
+    const cappedEval = Math.max(-1000, Math.min(1000, evaluation));
+    const normalizedEval = (cappedEval + 1000) / 2000;
+    const heightPercentage = normalizedEval * 100;
+
+    return <div className="bg-white transition-all duration-300 rounded-full" style={{ height: `${heightPercentage}%` }} />;
+};
+
+function AnalysisLoadingState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 text-center h-96">
+    <div className="flex flex-col items-center justify-center gap-4 text-center h-screen bg-stone-900 text-white">
       <h2 className="text-2xl font-semibold">Evaluating your game...</h2>
       <p className="text-muted-foreground">Our AI is charting the peaks and valleys of every move.</p>
       <div className="w-full max-w-md mt-4">
-          <Progress value={progress} className="h-2" />
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>Parsing PGN</span>
-              <span>Identifying Opening</span>
-              <span>Evaluating Moves</span>
-              <span>Compiling Report</span>
-          </div>
+          <Progress value={50} className="h-2" />
       </div>
     </div>
   );
 }
 
-function AnalysisPageComponent() {
-  const searchParams = useSearchParams();
-  const { toast } = useToast();
+function AnalysisFormComponent({ onAnalyze }: { onAnalyze: (pgn: string) => void }) {
+    const [pgn, setPgn] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const handleAnalyzeClick = () => {
+        setIsLoading(true);
+        onAnalyze(pgn);
+    }
 
-  const [pgn, setPgn] = useState('');
-  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  
+    return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 md:p-6">
+            <Card className="w-full max-w-2xl">
+                <CardHeader>
+                    <CardTitle>Analyze a Game</CardTitle>
+                    <CardDescription>Paste the PGN of a game to get a detailed report.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea
+                        placeholder="1. e4 e5 2. Nf3 ..."
+                        value={pgn}
+                        onChange={(e) => setPgn(e.target.value)}
+                        rows={10}
+                        className="font-mono"
+                    />
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleAnalyzeClick} disabled={isLoading || !pgn} className="w-full">
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                        Analyze
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
+
+
+function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) {
+  const router = useRouter();
   const [game, setGame] = useState(new Chess());
   const [board, setBoard] = useState<any[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
-  const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string} | null>(null);
+  const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string}>({});
 
-  const pgnFromUrl = searchParams.get('pgn');
-
+  useEffect(() => {
+     const gameForHeaders = new Chess();
+     gameForHeaders.loadPgn(analysis.pgn);
+     setPgnHeaders(gameForHeaders.header());
+     updateBoardAtMove(analysis.analysis.length - 1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis]);
+  
   const updateBoardAtMove = useCallback((index: number) => {
     if (!analysis || !analysis.pgn) return;
     
     const gameForReplay = new Chess();
-    try {
-        gameForReplay.loadPgn(analysis.pgn);
-    } catch {
-        // PGN already validated, should not fail
-        return;
-    }
+    gameForReplay.loadPgn(analysis.pgn);
+
     const history = gameForReplay.history({ verbose: true });
     
     const boardAtMove = new Chess();
@@ -103,359 +143,249 @@ function AnalysisPageComponent() {
     setCurrentMoveIndex(index);
   }, [analysis]);
 
-  const handleAnalyze = useCallback(async (pgnToAnalyze: string) => {
-    const cleanedPgn = pgnToAnalyze.trim();
-    if (!cleanedPgn) {
-      toast({ variant: 'destructive', title: 'Error', description: 'PGN input cannot be empty.' });
-      return;
-    }
-
-    setIsLoading(true);
-    setAnalysis(null);
-    setCurrentMoveIndex(-1);
-
-    const progressInterval = setInterval(() => {
-        setProgress(prev => (prev >= 95 ? prev : prev + 5));
-    }, 200);
-
-    try {
-      const chess = new Chess();
-      // chess.js throws an error on invalid PGN, which we catch.
-      chess.loadPgn(cleanedPgn);
-
-      if (chess.history().length === 0) {
-        throw new Error("Invalid or incomplete PGN. Please provide a PGN with at least one move.");
-      }
-      
-      const headers = chess.header();
-      setPgnHeaders(headers);
-      
-      const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
-      setAnalysis(result);
-
-      // Set board to the final position after analysis is complete
-      const finalGame = new Chess();
-      finalGame.loadPgn(result.pgn);
-      updateBoardAtMove(finalGame.history().length - 1);
-
-    } catch (e: any) {
-      const errorMessage = e.message?.includes('PGN') 
-          ? 'Invalid PGN provided. Please check the game data and try again.'
-          : e.message || 'An unknown error occurred during analysis.';
-      toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
-      setAnalysis(null); // Clear any partial analysis
-    } finally {
-      clearInterval(progressInterval);
-      setProgress(100);
-      setIsLoading(false);
-    }
-  }, [toast, updateBoardAtMove]);
-
-  useEffect(() => {
-    if (pgnFromUrl) {
-      const decodedPgn = decodeURIComponent(pgnFromUrl);
-      setPgn(decodedPgn);
-      handleAnalyze(decodedPgn);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pgnFromUrl]);
-
   const highlightedMove = useMemo(() => {
       if (!analysis || !analysis.pgn || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
-      
       const gameForMove = new Chess();
-      try {
-        gameForMove.loadPgn(analysis.pgn);
-      } catch { return null; }
-
+      gameForMove.loadPgn(analysis.pgn);
       const history = gameForMove.history({ verbose: true });
-      
       return history[currentMoveIndex] || null;
-
   }, [analysis, currentMoveIndex]);
 
   const currentMoveData = analysis?.analysis[currentMoveIndex];
-
-  if (!pgnFromUrl) {
-    return (
-      <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
-        <Card>
-            <CardHeader>
-                <CardTitle>Analyze a Game</CardTitle>
-                <CardDescription>Paste the PGN of a game to get a detailed report.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Textarea
-                    placeholder="1. e4 e5 2. Nf3 ..."
-                    value={pgn}
-                    onChange={(e) => setPgn(e.target.value)}
-                    rows={10}
-                    className="font-mono"
-                />
-            </CardContent>
-            <CardFooter>
-                 <Button onClick={() => handleAnalyze(pgn)} disabled={isLoading || !pgn} className="w-full">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
-                    Analyze
-                </Button>
-            </CardFooter>
-        </Card>
-    </div>
-    );
-  }
-
-  if (isLoading || !analysis || !pgnHeaders) {
-    return <AnalysisLoadingState progress={progress} />;
-  }
-  
   const totalMoves = analysis.analysis.length;
+
   return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          <div className="flex flex-col gap-4 items-center">
-              <Card className="w-full">
-                  <CardContent className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                         <Avatar>
-                              <AvatarFallback>{pgnHeaders['White']?.charAt(0) || 'W'}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                              <p className="font-semibold">{pgnHeaders['White'] || 'White'}</p>
-                              <p className="text-sm text-muted-foreground">ELO: {pgnHeaders['WhiteElo'] || 'N/A'}</p>
-                          </div>
-                      </div>
-                      <div className="text-center">
-                          <h3 className="font-bold text-lg">{pgnHeaders['Result']}</h3>
-                          <p className="text-sm text-muted-foreground">{pgnHeaders['Site'] || 'Online'}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                          <div className="text-right">
-                              <p className="font-semibold">{pgnHeaders['Black'] || 'Black'}</p>
-                              <p className="text-sm text-muted-foreground">ELO: {pgnHeaders['BlackElo'] || 'N/A'}</p>
-                          </div>
-                          <Avatar>
-                              <AvatarFallback>{pgnHeaders['Black']?.charAt(0) || 'B'}</AvatarFallback>
-                          </Avatar>
-                      </div>
-                  </CardContent>
-              </Card>
-              <div className="w-full max-w-2xl aspect-square">
-                  <ChessBoard 
-                      board={board}
-                      onSquareClick={() => {}}
-                      onSquareRightClick={() => {}}
-                      selectedSquare={null}
-                      possibleMoves={[]}
-                      lastMove={highlightedMove ? { from: highlightedMove.from, to: highlightedMove.to, san: highlightedMove.san } : null}
-                      boardTheme="cyan"
-                      showPossibleMoves={false}
-                      showLastMoveHighlight={true}
-                      boardOrientation="w"
-                      pieceSet="classic"
-                      customBoardColors={{ light: '', dark: ''}}
-                      handlePieceDrop={() => {}}
-                      showCoordinates='inside'
-                  />
-              </div>
-              <Card className="w-full max-w-2xl">
-                  <CardContent className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                          <Button onClick={() => updateBoardAtMove(-1)} size="icon" variant="ghost" disabled={currentMoveIndex < 0}><ChevronsLeft /></Button>
-                          <Button onClick={() => updateBoardAtMove(currentMoveIndex - 1)} size="icon" variant="ghost" disabled={currentMoveIndex < 0}><ChevronLeft /></Button>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                          Move {currentMoveIndex + 1} / {totalMoves}
-                      </div>
-                      <div className="flex items-center gap-1">
-                          <Button onClick={() => updateBoardAtMove(currentMoveIndex + 1)} size="icon" variant="ghost" disabled={currentMoveIndex >= totalMoves - 1}><ChevronRight /></Button>
-                          <Button onClick={() => updateBoardAtMove(totalMoves - 1)} size="icon" variant="ghost" disabled={currentMoveIndex >= totalMoves - 1}><ChevronsRight /></Button>
-                      </div>
-                  </CardContent>
-              </Card>
+    <div className="flex h-screen w-full bg-stone-900 text-white font-sans">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
+        <div className="w-full max-w-2xl flex items-center justify-between absolute top-4 text-sm px-2">
+            <div className="flex items-center gap-2">
+                {pgnHeaders.Black?.includes('AI') ? <Bot/> : <Users/>}
+                <span>{pgnHeaders.Black || 'Black'}</span>
+            </div>
+            <span>{pgnHeaders.Result}</span>
+        </div>
+        <div className="w-full max-w-[80vh] flex items-center gap-2">
+          <div className="h-[80vh] w-3 bg-black/20 rounded-full flex flex-col-reverse relative">
+             {renderEvalBar(currentMoveData?.evaluation)}
           </div>
-
-          <div className="flex flex-col gap-4">
-              <Tabs defaultValue="report" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="report">Report</TabsTrigger>
-                      <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="report" className="space-y-4 pt-4">
-                      <Card>
-                          <CardHeader>
-                              <CardTitle className="text-lg">Game Summary</CardTitle>
-                              <CardDescription>{analysis.opening}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-sm text-muted-foreground">{analysis.summary}</p>
-                          </CardContent>
-                      </Card>
-
-                      {analysis.keyMoments && analysis.keyMoments.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2"><Zap className="text-yellow-400" /> Key Moments</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {analysis.keyMoments.map((moment, index) => (
-                                    <div key={index} className="text-sm p-2 rounded-md hover:bg-muted cursor-pointer" onClick={() => updateBoardAtMove(moment.moveNumber -1)}>
-                                        <p className="font-semibold">{moment.moveNumber}. {moment.player === 'White' ? '' : '...'}{moment.san}</p>
-                                        <p className="text-muted-foreground">{moment.description}</p>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                      )}
-
-                      <Card>
-                          <CardHeader>
-                              <CardTitle className="text-lg">Accuracies</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                  <div className="text-center">
-                                      <p className="font-bold text-2xl">{analysis.accuracies.white.toFixed(1)}%</p>
-                                      <p className="text-sm text-muted-foreground">White</p>
-                                  </div>
-                                  <div className="text-center">
-                                      <p className="font-bold text-2xl">{analysis.accuracies.black.toFixed(1)}%</p>
-                                      <p className="text-sm text-muted-foreground">Black</p>
-                                  </div>
-                              </div>
-                              <div className="flex gap-1">
-                                  <Progress value={analysis.accuracies.white} className="rounded-r-none h-2" />
-                                  <Progress value={analysis.accuracies.black} className="rounded-l-none h-2" />
-                              </div>
-                          </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Move Classifications</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableBody>
-                                    {classificationOrder.map(key => {
-                                        const style = classificationStyles[key];
-                                        const whiteCount = analysis.moveCounts.white[key.toLowerCase() as keyof typeof analysis.moveCounts.white] || 0;
-                                        const blackCount = analysis.moveCounts.black[key.toLowerCase() as keyof typeof analysis.moveCounts.black] || 0;
-                                        const Icon = style.icon;
-                                        if(whiteCount === 0 && blackCount === 0) return null;
-                                        return (
-                                            <TableRow key={key}>
-                                                <TableCell className="font-medium p-2 text-center w-1/3">{whiteCount}</TableCell>
-                                                <TableCell className="text-center p-2">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <Icon className={cn("h-5 w-5", style.className)} />
-                                                        <span className={cn("font-semibold", style.className)}>{style.label}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="font-medium p-2 text-center w-1/3">{blackCount}</TableCell>
-                                            </TableRow>
-                                        )
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                          <CardHeader>
-                              <CardTitle className="text-lg">Evaluation</CardTitle>
-                          </CardHeader>
-                          <CardContent className="h-40 w-full pr-8 text-xs">
-                              <ChartContainer config={chartConfig} className="h-full w-full">
-                                  <LineChart data={analysis.analysis.map((d, i) => ({ ...d, fullMoveNumber: Math.floor(i / 2) + 1 }))} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                                      <XAxis dataKey="fullMoveNumber" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" />
-                                      <YAxis tickFormatter={(value) => `${(Number(value) / 100).toFixed(1)}`} domain={[-1000, 1000]} allowDataOverflow tickLine={false} axisLine={false} tickMargin={8} width={55} />
-                                      <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                                      <ChartTooltip cursor={true} content={<ChartTooltipContent formatter={(value) => `Eval: ${(Number(value) / 100).toFixed(2)}`} labelFormatter={(_, payload) => {
-                                          const move = payload?.[0]?.payload;
-                                          if (move) return `${move.moveNumber}${move.player === 'White' ? '.' : '...'} ${move.san}`;
-                                          return '';
-                                      }} indicator="line" />} />
-                                      <Line dataKey="evaluation" type="monotone" stroke="var(--color-evaluation)" strokeWidth={2} dot={false} />
-                                  </LineChart>
-                              </ChartContainer>
-                          </CardContent>
-                      </Card>
-
-                  </TabsContent>
-                  <TabsContent value="analysis" className="space-y-4 pt-4">
-                        {currentMoveData && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <Info className="h-5 w-5" />
-                                        Move {currentMoveData.moveNumber}: {currentMoveData.san}
-                                    </CardTitle>
-                                    <CardDescription className="flex items-center gap-2 pt-1">
-                                        <div className={cn("flex items-center gap-1.5", classificationStyles[currentMoveData.classification]?.className)}>
-                                            {React.createElement(classificationStyles[currentMoveData.classification]?.icon, { className: "h-5 w-5" })}
-                                            <span className="font-semibold">{classificationStyles[currentMoveData.classification]?.label}</span>
-                                        </div>
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground flex items-start gap-2">
-                                        <MessageSquareQuote className="h-4 w-4 mt-1 shrink-0" />
-                                        <span>{currentMoveData.explanation}</span>
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-                      <Card className="flex-1 flex flex-col">
-                          <CardHeader>
-                              <CardTitle className="text-lg">Game History</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-0 flex-1">
-                              <ScrollArea className="h-[400px]">
-                                  <div className="grid grid-cols-[auto_1fr_1fr] px-4">
-                                      {analysis.analysis.reduce((acc, move, index) => {
-                                          if (move.player === 'White') {
-                                              acc.push([move]);
-                                          } else if (acc.length > 0) {
-                                              acc[acc.length - 1].push(move);
-                                          } else {
-                                              acc.push([undefined, move]);
-                                          }
-                                          return acc;
-                                      }, [] as [any, any][]).map((movePair, pairIndex) => {
-                                          const [whiteMove, blackMove] = movePair;
-                                          return (
-                                              <div key={pairIndex} className="grid grid-cols-subgrid col-span-3 items-center border-b last:border-b-0">
-                                                  <div className="text-right text-muted-foreground font-mono pr-2">{pairIndex + 1}.</div>
-                                                  {whiteMove ? (
-                                                      <div onClick={() => updateBoardAtMove(whiteMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted", currentMoveIndex === whiteMove.moveNumber -1 && "bg-primary/10")}>
-                                                          {React.createElement(classificationStyles[whiteMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[whiteMove.classification].className)})}
-                                                          <span className="font-semibold text-base">{whiteMove.san}</span>
-                                                      </div>
-                                                  ) : <div />}
-                                                  {blackMove ? (
-                                                      <div onClick={() => updateBoardAtMove(blackMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted", currentMoveIndex === blackMove.moveNumber -1 && "bg-primary/10")}>
-                                                         {React.createElement(classificationStyles[blackMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[blackMove.classification].className)})}
-                                                          <span className="font-semibold text-base">{blackMove.san}</span>
-                                                      </div>
-                                                  ) : <div />}
-                                              </div>
-                                          )
-                                      })}
-                                  </div>
-                              </ScrollArea>
-                          </CardContent>
-                      </Card>
-                  </TabsContent>
-              </Tabs>
+          <div className="w-full aspect-square">
+            <ChessBoard
+                board={board}
+                onSquareClick={() => {}}
+                onSquareRightClick={() => {}}
+                selectedSquare={null}
+                possibleMoves={[]}
+                lastMove={highlightedMove ? { from: highlightedMove.from, to: highlightedMove.to, san: highlightedMove.san } : null}
+                boardTheme="classic"
+                showPossibleMoves={false}
+                showLastMoveHighlight={true}
+                boardOrientation="w"
+                pieceSet="cburnett"
+                handlePieceDrop={() => {}}
+                showCoordinates='outside'
+            />
           </div>
+        </div>
+         <div className="w-full max-w-2xl flex items-center justify-between absolute bottom-4 text-sm px-2">
+            <div className="flex items-center gap-2">
+                {pgnHeaders.White?.includes('AI') ? <Bot/> : <Users/>}
+                <span>{pgnHeaders.White || 'White'}</span>
+            </div>
+        </div>
       </div>
+
+      <div className="w-[380px] bg-[#262522] h-full flex flex-col p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold">Game Report</h1>
+          <div className="flex items-center gap-1">
+            <Button onClick={() => router.push('/')} variant="ghost" size="icon"><ArrowLeft className="h-5 w-5"/></Button>
+            <Button variant="ghost" size="icon"><RotateCw className="h-5 w-5"/></Button>
+            <Button variant="ghost" size="icon"><Settings className="h-5 w-5"/></Button>
+            <Button variant="ghost" size="icon"><Share2 className="h-5 w-5"/></Button>
+          </div>
+        </div>
+        
+        <Tabs defaultValue="report" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 bg-stone-800">
+            <TabsTrigger value="report">Report</TabsTrigger>
+            <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          </TabsList>
+          
+          <ScrollArea className="flex-1 mt-4">
+            <TabsContent value="report" className="space-y-4 pr-2">
+                {currentMoveData && (
+                     <Card className="bg-stone-800 border-stone-700">
+                        <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                                {React.createElement(classificationStyles[currentMoveData.classification].icon, { className: cn("h-6 w-6", classificationStyles[currentMoveData.classification].className)})}
+                                <p className="font-semibold">{currentMoveData.san} is {classificationStyles[currentMoveData.classification].label}</p>
+                            </div>
+                            <p className="text-sm text-stone-400 mt-1">{currentMoveData.explanation}</p>
+                        </CardContent>
+                    </Card>
+                )}
+                <Card className="bg-stone-800 border-stone-700">
+                    <CardHeader className="p-3">
+                         <CardTitle className="text-base font-semibold">Opening: {analysis.opening}</CardTitle>
+                    </CardHeader>
+                </Card>
+
+                <Card className="bg-stone-800 border-stone-700">
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-base font-semibold">Accuracies</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 grid grid-cols-2 gap-4 items-center">
+                        <div className="text-center">
+                            <p className="font-bold text-2xl">{analysis.accuracies.white.toFixed(1)}%</p>
+                            <p className="text-sm text-stone-400">White</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="font-bold text-2xl">{analysis.accuracies.black.toFixed(1)}%</p>
+                            <p className="text-sm text-stone-400">Black</p>
+                        </div>
+                         <div className="col-span-2 flex gap-1">
+                            <Progress value={analysis.accuracies.white} className="h-2 rounded-r-none bg-stone-700" indicatorClassName="bg-white" />
+                            <Progress value={analysis.accuracies.black} className="h-2 rounded-l-none bg-stone-700" indicatorClassName="bg-black border border-stone-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-stone-800 border-stone-700">
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-base font-semibold">Move Classifications</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                       <Table>
+                            <TableBody>
+                                {classificationOrder.map(key => {
+                                    const style = classificationStyles[key];
+                                    if(!style) return null;
+                                    const whiteCount = analysis.moveCounts.white[key.toLowerCase() as keyof typeof analysis.moveCounts.white] || 0;
+                                    const blackCount = analysis.moveCounts.black[key.toLowerCase() as keyof typeof analysis.moveCounts.black] || 0;
+                                    if(whiteCount === 0 && blackCount === 0) return null;
+                                    return (
+                                        <TableRow key={key} className="border-b-stone-700 hover:bg-stone-700/50">
+                                            <TableCell className="font-medium p-1.5 w-1/3">{whiteCount}</TableCell>
+                                            <TableCell className="text-center p-1.5">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className={cn("font-semibold", style.className)}>{style.label}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-medium p-1.5 text-right w-1/3">{blackCount}</TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="analysis" className="pr-2">
+                <div className="grid grid-cols-[auto_1fr_1fr] text-sm">
+                  {analysis.analysis.reduce((acc, move, index) => {
+                      if (move.player === 'White') {
+                          acc.push([move]);
+                      } else if (acc.length > 0) {
+                          acc[acc.length - 1].push(move);
+                      }
+                      return acc;
+                  }, [] as [any, any][]).map((movePair, pairIndex) => {
+                      const [whiteMove, blackMove] = movePair;
+                      return (
+                          <div key={pairIndex} className="grid grid-cols-subgrid col-span-3 items-center border-b border-stone-700 last:border-b-0">
+                              <div className="text-right text-stone-400 font-mono pr-2">{pairIndex + 1}.</div>
+                              {whiteMove ? (
+                                  <div onClick={() => updateBoardAtMove(whiteMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === whiteMove.moveNumber -1 && "bg-blue-600/30")}>
+                                      {React.createElement(classificationStyles[whiteMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[whiteMove.classification].className)})}
+                                      <span className="font-semibold">{whiteMove.san}</span>
+                                  </div>
+                              ) : <div />}
+                              {blackMove ? (
+                                  <div onClick={() => updateBoardAtMove(blackMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === blackMove.moveNumber -1 && "bg-blue-600/30")}>
+                                      {React.createElement(classificationStyles[blackMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[blackMove.classification].className)})}
+                                      <span className="font-semibold">{blackMove.san}</span>
+                                  </div>
+                              ) : <div />}
+                          </div>
+                      )
+                  })}
+                </div>
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+
+        <div className="mt-auto flex items-center justify-center gap-2 pt-4">
+            <Button onClick={() => updateBoardAtMove(-1)} size="icon" variant="ghost" disabled={currentMoveIndex < 0}><ChevronsLeft /></Button>
+            <Button onClick={() => updateBoardAtMove(currentMoveIndex - 1)} size="icon" variant="ghost" disabled={currentMoveIndex < 0}><ChevronLeft /></Button>
+            <Button onClick={() => updateBoardAtMove(currentMoveIndex + 1)} size="icon" variant="ghost" disabled={currentMoveIndex >= totalMoves - 1}><ChevronRight /></Button>
+            <Button onClick={() => updateBoardAtMove(totalMoves - 1)} size="icon" variant="ghost" disabled={currentMoveIndex >= totalMoves - 1}><ChevronsRight /></Button>
+        </div>
+      </div>
+    </div>
   );
+}
+
+
+function AnalysisPageComponent() {
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
+  const [pgn, setPgn] = useState<string | null>(searchParams.get('pgn'));
+  const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
+  const [isLoading, setIsLoading] = useState(!!pgn);
+
+  const handleAnalyze = useCallback(async (pgnToAnalyze: string) => {
+    setIsLoading(true);
+    const cleanedPgn = pgnToAnalyze.trim();
+    if (!cleanedPgn) {
+      toast({ variant: 'destructive', title: 'Error', description: 'PGN input cannot be empty.' });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const chess = new Chess();
+      chess.loadPgn(cleanedPgn, { sloppy: true });
+
+      if (chess.history().length === 0) {
+        throw new Error("Invalid or incomplete PGN.");
+      }
+      
+      const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
+      setAnalysis(result);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Analysis Failed', description: e.message || 'An unknown error occurred.' });
+      setPgn(null); // Reset to show form again
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    if (pgn) {
+      handleAnalyze(pgn);
+    }
+  }, [pgn, handleAnalyze]);
+
+  if (!pgn) {
+    return <AnalysisFormComponent onAnalyze={setPgn} />;
+  }
+
+  if (isLoading) {
+    return <AnalysisLoadingState />;
+  }
+
+  if (analysis) {
+    return <AnalysisReportComponent analysis={analysis} />;
+  }
+
+  return <AnalysisFormComponent onAnalyze={setPgn} />; // Fallback to form on error
 }
 
 
 export default function AnalysisPageSuspenseWrapper() {
   return (
-    <Suspense fallback={<AnalysisLoadingState progress={10} />}>
+    <Suspense fallback={<AnalysisLoadingState />}>
       <AnalysisPageComponent />
     </Suspense>
   );
