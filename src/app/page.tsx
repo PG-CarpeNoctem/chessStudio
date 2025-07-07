@@ -5,7 +5,7 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2, Menu, Crown, Clock } from 'lucide-react';
+import { Loader2, Menu, Crown, Clock, Handshake, Flag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -44,25 +44,27 @@ export default function Home() {
   }, [router]);
 
   const getGameOverMessage = () => {
-    if (!game.gameOver) return { title: '', description: '' };
+    if (!game.gameOver) return { title: '', description: '', icon: Crown };
     const { status, winner } = game.gameOver;
     switch (status) {
       case 'Checkmate':
-        return { title: 'Checkmate!', description: `${winner} wins the game.` };
-      case 'Draw':
-        return { title: 'Draw', description: 'The game is a draw by agreement.' };
+        return { title: 'Checkmate!', description: `${winner} wins the game.`, icon: Crown };
+      case 'Draw by Agreement':
+        return { title: 'Draw', description: 'The game is a draw by agreement.', icon: Handshake };
       case 'Stalemate':
-        return { title: 'Stalemate!', description: 'The game is a draw by stalemate.' };
+        return { title: 'Stalemate!', description: 'The game is a draw by stalemate.', icon: Handshake };
       case 'Threefold Repetition':
-        return { title: 'Draw', description: 'The game is a draw by threefold repetition.' };
+        return { title: 'Draw', description: 'The game is a draw by threefold repetition.', icon: Handshake };
       case 'Timeout':
-        return { title: 'Timeout!', description: `${winner} wins on time.` };
+        return { title: 'Timeout!', description: `${winner} wins on time.`, icon: Clock };
+      case 'Resignation':
+        return { title: 'Resignation', description: `${winner} wins by resignation.`, icon: Flag };
       default:
-        return { title: 'Game Over', description: 'The game has ended.' };
+        return { title: 'Game Over', description: 'The game has ended.', icon: Crown };
     }
   };
 
-  const { title: gameOverTitle, description: gameOverDescription } = getGameOverMessage();
+  const { title: gameOverTitle, description: gameOverDescription, icon: GameOverIcon } = getGameOverMessage();
 
   if (isAuthenticating || !game.isMounted) {
     return (
@@ -109,7 +111,7 @@ export default function Home() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        {game.gameOver?.status === 'Timeout' ? <Clock className="w-6 h-6 text-orange-400" /> : <Crown className="w-6 h-6 text-yellow-400" />}
+                        <GameOverIcon className="w-6 h-6 text-yellow-400" />
                         {gameOverTitle}
                     </AlertDialogTitle>
                     <AlertDialogDescription>

@@ -227,14 +227,20 @@ export const useChessGame = () => {
       } else if (g.isThreefoldRepetition()) {
         status = 'Threefold Repetition';
         g.setHeader('Result', '1/2-1/2');
-      } else if (isGameOverMove) { // Timeout case
-        status = 'Timeout';
+      } else if (isGameOverMove && !gameOver) { // Timeout case, but also covers resign/draw
+        const gStatus = (gameOver as any)?.status || 'Timeout';
+        status = gStatus;
         winner = g.turn() === 'w' ? 'Black' : 'White';
-        g.setHeader('Result', winner === 'White' ? '1-0' : '0-1');
+        if (status === 'Resignation') {
+            winner = g.turn() === 'w' ? 'Black' : 'White'; // The resigner loses
+        } else if (status.includes('Draw')) {
+            winner = 'None';
+        }
+        g.setHeader('Result', winner === 'White' ? '1-0' : (winner === 'Black' ? '0-1' : '1/2-1/2'));
       }
 
       const finalPgn = g.pgn();
-      setGameOver({ status, winner });
+      setGameOver(prev => prev || { status, winner });
       setPgn(finalPgn);
 
       // Save game to history
@@ -442,6 +448,7 @@ export const useChessGame = () => {
 
         if (newTimeForPlayer <= 0) {
           clearInterval(interval);
+          setGameOver({ status: 'Timeout', winner: currentTurn === 'w' ? 'Black' : 'White' });
           updateGameState(true); // pass true to indicate timeout
           return { ...prevTime, [currentTurn]: 0 };
         }
@@ -591,27 +598,31 @@ export const useChessGame = () => {
 
   useEffect(() => {
     if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
-      const performAIMoveWithRetries = async () => {
+      const performAIMoveWithRetries = async (retries = 3) => {
+        if (retries === 0) {
+           toast({
+                variant: 'destructive',
+                title: 'AI Error',
+                description: 'The AI failed to make a move. Please try again.',
+            });
+            setIsAITurn(false);
+            return;
+        }
+
         setIsAITurn(true);
-        for (let i = 0; i < 3; i++) {
-          try {
-            const legalMoves = gameRef.current.moves();
+        try {
+            const legalMoves = gameRef.current.moves({verbose: true}).map(m => m.san);
             if (legalMoves.length === 0) {
               setIsAITurn(false);
               return;
             }
 
-            const aiPromise = suggestMove({
+            const { suggestedMove } = await suggestMove({
               boardStateFen: gameRef.current.fen(),
               legalMoves: legalMoves,
               skillLevel,
             });
-
-            const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('AI response timed out after 5 seconds.')), 5000)
-            );
-
-            const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
+            
             const moveSuccessful = makeMove(suggestedMove);
             
             if (moveSuccessful) {
@@ -623,21 +634,14 @@ export const useChessGame = () => {
                 setPremove(null);
               }
               setIsAITurn(false);
-              return; // Success, exit function
             } else {
-              console.warn(`AI suggested an invalid move: ${suggestedMove}. Retrying... Attempt ${i + 1}`);
+              console.warn(`AI suggested an invalid move: ${suggestedMove}. Retrying...`);
+              performAIMoveWithRetries(retries - 1);
             }
           } catch (error: any) {
-            console.error(`AI move attempt ${i + 1} failed:`, error);
+            console.error(`AI move attempt failed:`, error);
+            performAIMoveWithRetries(retries - 1);
           }
-        }
-
-        toast({
-            variant: 'destructive',
-            title: 'AI Error',
-            description: 'The AI is having trouble finding a move. Please try again.',
-        });
-        setIsAITurn(false);
       };
 
       const timeoutId = setTimeout(performAIMoveWithRetries, 500);
@@ -681,6 +685,22 @@ export const useChessGame = () => {
 
     return captured;
   }, [history]);
+  
+  const resignGame = useCallback(() => {
+      if (gameOver) return;
+      const winner = gameRef.current.turn() === 'w' ? 'Black' : 'White';
+      setGameOver({ status: 'Resignation', winner });
+      updateGameState(true);
+  }, [gameOver, updateGameState]);
+
+  const offerDraw = useCallback(() => {
+      if (gameOver) return;
+      // In a real multiplayer game, this would send an offer.
+      // Against AI, we can have it accept immediately.
+      setGameOver({ status: 'Draw by Agreement', winner: 'None' });
+      updateGameState(true);
+  }, [gameOver, updateGameState]);
+
 
   return {
     board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, premove,
@@ -689,5 +709,6 @@ export const useChessGame = () => {
     promotionMove, cancelPromotion, handlePromotion,
     showCapturedPieces, capturedPieces,
     isMounted, // Expose isMounted for conditional rendering in parent
+    resignGame, offerDraw,
   };
 };

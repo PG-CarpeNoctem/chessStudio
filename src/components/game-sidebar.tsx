@@ -19,7 +19,7 @@ import {
 import { Label } from './ui/label';
 import { AuthButton } from './auth-button';
 import type { useChessGame } from '@/hooks/use-chess-game';
-import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil, ScrollText } from 'lucide-react';
+import { Play, RefreshCw, Settings, Undo2, Redo2, Bot, Users, Puzzle, Pencil, ScrollText, Flag, Handshake } from 'lucide-react';
 import { Switch } from './ui/switch';
 import type { TimeControl } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,8 @@ import { Slider } from './ui/slider';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'resetGame' | 'skillLevel' | 'setSkillLevel' | 'flipBoard' | 'undoMove' | 'redoMove' |
-    'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl'
+    'canUndo' | 'canRedo' | 'gameMode' | 'setGameMode' | 'timeControl' | 'setTimeControl' |
+    'resignGame' | 'offerDraw' | 'gameOver'
 > & {
     className?: string;
 };
@@ -54,6 +55,9 @@ export function GameSidebar({
   setGameMode,
   timeControl,
   setTimeControl,
+  resignGame,
+  offerDraw,
+  gameOver,
   className,
 }: GameSidebarProps) {
   const [isCustomTimeDialogOpen, setIsCustomTimeDialogOpen] = useState(false);
@@ -126,6 +130,14 @@ export function GameSidebar({
                             <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
                             <Redo2 />
                             Redo
+                            </Button>
+                             <Button onClick={offerDraw} disabled={!!gameOver} variant="outline" size="sm">
+                                <Handshake />
+                                Offer Draw
+                            </Button>
+                             <Button onClick={resignGame} disabled={!!gameOver} variant="outline" size="sm">
+                                <Flag />
+                                Resign
                             </Button>
                             <Button onClick={flipBoard} variant="outline" size="sm" className="col-span-2">
                                 <RefreshCw />

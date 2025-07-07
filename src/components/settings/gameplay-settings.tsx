@@ -14,7 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronsRight, Check, Volume2, Eye } from 'lucide-react';
+import { ChevronsRight, Check, Volume2, Eye, Trophy } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { AutoPromote } from '@/lib/types';
@@ -50,6 +50,7 @@ export function GameplaySettings() {
     confirmMove: false,
     enableSounds: true,
     showCapturedPieces: true,
+    showEstimatedElo: true,
   });
   const [initialState, setInitialState] = useState(settings);
 
@@ -60,6 +61,7 @@ export function GameplaySettings() {
         confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
         enableSounds: getJsonSetting<boolean>('chess:enableSounds', true),
         showCapturedPieces: getJsonSetting<boolean>('chess:showCapturedPieces', true),
+        showEstimatedElo: getJsonSetting<boolean>('chess:showEstimatedElo', true),
       };
       setSettings(loadedSettings);
       setInitialState(loadedSettings);
@@ -153,6 +155,21 @@ export function GameplaySettings() {
                     Pawns will automatically be promoted to this piece.
                 </p>
             </div>
+            
+            <Separator />
+
+             <div className="space-y-4 rounded-md border p-4 max-w-sm">
+                 <h3 className="text-lg font-medium">Analysis</h3>
+                 <div className="flex items-center justify-between">
+                    <Label htmlFor="show-estimated-elo" className="flex flex-col items-start gap-1">
+                        <span className="flex items-center gap-2"><Trophy className="h-4 w-4" /> Show Estimated ELO</span>
+                        <span className="text-xs text-muted-foreground font-normal">Display estimated ELO in Game Report.</span>
+                    </Label>
+                    <Switch id="show-estimated-elo" checked={settings.showEstimatedElo} onCheckedChange={(c) => setSettings(s => ({...s, showEstimatedElo: c}))} />
+                </div>
+            </div>
+
+
         </CardContent>
         <CardFooter className="border-t bg-muted/50 px-6 py-3 justify-end gap-2">
             <Button onClick={handleCancel} variant="ghost" disabled={!hasChanges}>Cancel</Button>

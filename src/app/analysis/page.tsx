@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap, RotateCw, Settings, Share2, ArrowLeft, Bot, Users } from 'lucide-react';
+import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap, RotateCw, Settings, Share2, ArrowLeft, Bot, Users, XCircle, Trophy } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -32,8 +32,9 @@ const classificationStyles: Record<string, { icon: React.ElementType, className:
   Mistake: { icon: AlertCircle, className: 'text-orange-500', label: 'Mistake' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600', label: 'Blunder' },
   Forced: { icon: Target, className: 'text-indigo-400', label: 'Forced' },
+  'Missed Win': { icon: XCircle, className: 'text-red-700', label: 'Missed Win' },
 };
-const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Okay', 'Book', 'Inaccuracy', 'Mistake', 'Blunder', 'Forced'];
+const classificationOrder = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Okay', 'Book', 'Inaccuracy', 'Mistake', 'Blunder', 'Missed Win', 'Forced'];
 
 const renderEvalBar = (evaluation: number | undefined) => {
     if (evaluation === undefined) {
@@ -101,6 +102,12 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
   const router = useRouter();
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string}>({});
+  const [showEstimatedElo, setShowEstimatedElo] = useState(true);
+
+  useEffect(() => {
+    const showElo = localStorage.getItem('chess:showEstimatedElo');
+    setShowEstimatedElo(showElo ? JSON.parse(showElo) : true);
+  }, []);
 
   const gameAtMove = useMemo(() => {
     if (!analysis || !analysis.pgn) return new Chess();
@@ -151,6 +158,7 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
             <div className="flex items-center gap-2">
                 {pgnHeaders.Black?.includes('AI') ? <Bot/> : <Users/>}
                 <span>{pgnHeaders.Black || 'Black'}</span>
+                {showEstimatedElo && <span className="text-muted-foreground">({analysis.estimatedElos.black})</span>}
             </div>
             <span>{pgnHeaders.Result}</span>
         </div>
@@ -187,6 +195,7 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
             <div className="flex items-center gap-2">
                 {pgnHeaders.White?.includes('AI') ? <Bot/> : <Users/>}
                 <span>{pgnHeaders.White || 'White'}</span>
+                {showEstimatedElo && <span className="text-muted-foreground">({analysis.estimatedElos.white})</span>}
             </div>
         </div>
       </div>
@@ -245,8 +254,8 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                                 {classificationOrder.map(key => {
                                     const style = classificationStyles[key];
                                     if(!style) return null;
-                                    const whiteCount = analysis.moveCounts.white[key.toLowerCase() as keyof typeof analysis.moveCounts.white] || 0;
-                                    const blackCount = analysis.moveCounts.black[key.toLowerCase() as keyof typeof analysis.moveCounts.black] || 0;
+                                    const whiteCount = analysis.moveCounts.white[key.toLowerCase().replace(' ', '') as keyof typeof analysis.moveCounts.white] || 0;
+                                    const blackCount = analysis.moveCounts.black[key.toLowerCase().replace(' ', '') as keyof typeof analysis.moveCounts.black] || 0;
                                     if(whiteCount === 0 && blackCount === 0) return null;
                                     return (
                                         <TableRow key={key} className="border-b-stone-700 hover:bg-stone-700/50">
