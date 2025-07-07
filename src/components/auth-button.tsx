@@ -14,6 +14,7 @@ export function AuthButton() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [elo, setElo] = useState(1200);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
@@ -30,6 +31,7 @@ export function AuthButton() {
       if (loggedInStatus) {
           setUsername(localStorage.getItem('username') || 'PlayerOne');
           setAvatar(localStorage.getItem('chess:avatar'));
+          setElo(1200); // Placeholder ELO
       } else {
           setUsername(null);
           setAvatar(null);
@@ -117,7 +119,7 @@ export function AuthButton() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">ELO Rating</span>
                 <span className="font-semibold flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400" /> 1200
+                  <Star className="w-4 h-4 text-yellow-400" /> {elo}
                 </span>
               </div>
             </div>

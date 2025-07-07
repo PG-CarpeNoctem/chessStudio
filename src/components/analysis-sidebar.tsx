@@ -20,7 +20,7 @@ import { Skeleton } from './ui/skeleton';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'time' | 'isMounted' | 'gameMode'
+    'time' | 'isMounted' | 'gameMode' | 'skillLevel'
 > & {
   className?: string;
 };
@@ -35,21 +35,21 @@ const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle }: { name: string, avatarSrc: string | null, isOpponent?: boolean, time: string, subtitle?: string | null }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo }: { name: string, avatarSrc: string | null, isOpponent?: boolean, time: string, subtitle?: string | null, elo?: number }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
-      <div className="flex justify-between items-center gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar className="h-8 w-8">
+      <div className="flex justify-between items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Avatar className="h-10 w-10">
             <AvatarImage src={avatarSrc || undefined} alt={name} />
             <AvatarFallback>{isOpponent ? <Bot className="h-5 w-5" /> : name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col min-w-0">
-            <span className="font-semibold truncate">{name}</span>
-            {subtitle && <span className="text-xs text-muted-foreground truncate">{subtitle}</span>}
+          <div className="flex flex-col">
+            <span className="font-semibold">{name} {elo && `(${elo})`}</span>
+            {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
           </div>
         </div>
-        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1 flex-shrink-0">
+        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1.5 flex-shrink-0">
           {time}
         </div>
       </div>
@@ -57,12 +57,14 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle }: { n
   </Card>
 );
 
+
 export function AnalysisSidebar({ 
     pgn, history, isAITurn, getHint, gameOver, 
-    time, isMounted, gameMode, className 
+    time, isMounted, gameMode, className, skillLevel
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [userElo, setUserElo] = useState(1200);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -73,6 +75,8 @@ export function AnalysisSidebar({
             setUsername(storedUsername);
         }
         setAvatar(localStorage.getItem('chess:avatar'));
+        // For now, we'll use a static ELO, but this could come from user data
+        setUserElo(1200);
     }
     updateUserState();
     
@@ -106,14 +110,15 @@ export function AnalysisSidebar({
   const formattedTimeB = formatTime(time.b, !!gameOver, history.length);
 
   const opponentName = gameMode === 'ai' ? 'AI Opponent' : 'Player 2';
-  const opponentSubtitle = gameMode === 'ai' ? `Ready for a challenge!` : null;
+  const opponentElo = gameMode === 'ai' ? 800 + skillLevel * 100 : 1200;
+  const opponentSubtitle = gameMode === 'ai' ? `Level ${skillLevel}` : 'Local Player';
 
   if (!isMounted) {
     return (
       <aside className={cn("w-[260px] flex-shrink-0 flex flex-col gap-4 p-4 bg-sidebar text-sidebar-foreground border-l border-sidebar-border", className)}>
-        <Skeleton className="h-[60px] w-full" />
+        <Skeleton className="h-[68px] w-full" />
         <Skeleton className="flex-1 w-full" />
-        <Skeleton className="h-[60px] w-full" />
+        <Skeleton className="h-[68px] w-full" />
         <Skeleton className="h-[100px] w-full" />
         <Skeleton className="h-[60px] w-full" />
       </aside>
@@ -128,6 +133,7 @@ export function AnalysisSidebar({
         isOpponent={true} 
         time={formattedTimeB}
         subtitle={opponentSubtitle}
+        elo={opponentElo}
       />
       
       <Card className="flex-1 flex flex-col bg-sidebar-accent border-sidebar-border overflow-hidden">
@@ -169,6 +175,7 @@ export function AnalysisSidebar({
         name={username} 
         avatarSrc={avatar}
         time={formattedTimeW}
+        elo={userElo}
       />
       
       <Card className="bg-sidebar-accent border-sidebar-border">
