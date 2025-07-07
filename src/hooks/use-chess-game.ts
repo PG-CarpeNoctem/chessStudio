@@ -23,6 +23,20 @@ const getSetting = <T,>(key: string, defaultValue: T): T => {
     }
 };
 
+const setJsonSetting = (key: string, value: any) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const stringifiedValue = JSON.stringify(value);
+    localStorage.setItem(key, stringifiedValue);
+    // Dispatches a storage event to notify other tabs/windows
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue: stringifiedValue }));
+    // Dispatches a custom event for same-tab listeners
+    window.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value }}));
+  } catch (e) {
+    console.error("Failed to save setting to localStorage", e);
+  }
+};
+
 const defaultCustomColors: CustomColors = {
   boardLight: '#f0d9b5',
   boardDark: '#b58863',
@@ -60,7 +74,7 @@ export const useChessGame = () => {
   const [skillLevel, setSkillLevel] = useState(4);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
   
-  const [timeControl, setTimeControl] = useState<TimeControl>({ type: 'fischer', initial: 600, increment: 0 });
+  const [timeControl, _setTimeControl] = useState<TimeControl>({ type: 'fischer', initial: 600, increment: 0 });
   const [time, setTime] = useState({ w: 600000, b: 600000 });
   const [timerOn, setTimerOn] = useState(false);
   const timerDelayRef = useRef<NodeJS.Timeout | null>(null);
@@ -83,8 +97,20 @@ export const useChessGame = () => {
   const [autoPromoteTo, setAutoPromoteTo] = useState<AutoPromote>('q');
   const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
   const [enableSounds, setEnableSounds] = useState<boolean>(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  const setTimeControl = useCallback((value: TimeControl) => {
+    _setTimeControl(value);
+    setJsonSetting('chess:timeControl', value);
+  }, []);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const loadSettings = () => {
       setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
       setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
@@ -96,13 +122,25 @@ export const useChessGame = () => {
       setAutoPromoteTo(getSetting<AutoPromote>('chess:autoPromoteTo', 'q'));
       setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
       setEnableSounds(getSetting<boolean>('chess:enableSounds', true));
+      _setTimeControl(getSetting<TimeControl>('chess:timeControl', { type: 'fischer', initial: 600, increment: 0 }));
     };
 
     loadSettings();
 
-    window.addEventListener('storage', loadSettings);
-    return () => window.removeEventListener('storage', loadSettings);
-  }, []);
+    const handleSettingsChanged = (event: Event) => {
+        if (event instanceof StorageEvent || (event as CustomEvent).detail?.key.startsWith('chess:')) {
+            loadSettings();
+        }
+    };
+    
+    window.addEventListener('storage', handleSettingsChanged);
+    window.addEventListener('settingsChanged', handleSettingsChanged);
+
+    return () => {
+        window.removeEventListener('storage', handleSettingsChanged);
+        window.removeEventListener('settingsChanged', handleSettingsChanged);
+    };
+  }, [isMounted]);
 
   useEffect(() => {
     if (enableSounds && typeof window !== 'undefined') {
@@ -247,14 +285,15 @@ export const useChessGame = () => {
     try {
       setRedoStack([]); // Clear redo stack on new move
       const g = gameRef.current;
-      const isFirstMove = g.history().length === 0;
       const prevTurn = g.turn();
+      const isFirstMove = g.history().length === 0;
+
       const result = g.move(move);
       
       if (result) {
         if (result.flags.includes('c')) playSound('capture');
         else playSound('move');
-        if (g.isCheck()) playSound('check');
+        if (g.inCheck()) playSound('check');
 
         if (timeControl.type === 'fischer' || timeControl.type === 'bronstein') {
             setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + (timeControl.increment * 1000) }));
@@ -264,12 +303,13 @@ export const useChessGame = () => {
         setHint(null);
         
         // Timer logic on successful move
-        if ((isFirstMove || !timerOn) && timeControl.type !== 'unlimited') {
+        if (isFirstMove && timeControl.type !== 'unlimited' && !g.isGameOver()) {
             setTimerOn(true);
         }
 
         if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
         if (timeControl.type === 'delay' && !g.isGameOver()) {
+            setTimerOn(false); // Stop timer during delay
             timerDelayRef.current = setTimeout(() => {
                 setTimerOn(true);
             }, timeControl.increment * 1000);
@@ -277,12 +317,11 @@ export const useChessGame = () => {
         return true;
       }
     } catch (e) {
-      // This catch block will handle illegal moves from chess.js
       console.error("Invalid move attempted: ", move, e);
       return false;
     }
     return false;
-  }, [timeControl, updateGameState, playSound, timerOn]);
+  }, [timeControl, updateGameState, playSound]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -462,6 +501,13 @@ export const useChessGame = () => {
     }
     
     // It IS the player's turn: Handle regular moves
+    if (g.turn() !== boardOrientation && gameMode === 'two-player' && boardOrientation === 'b') {
+        // Player is black and it is black's turn
+    } else if (g.turn() !== boardOrientation) {
+        // Not the player's turn in AI mode
+        return;
+    }
+
     const pieceOnSquare = g.get(square);
 
     if (selectedSquare) {
@@ -558,7 +604,7 @@ export const useChessGame = () => {
   
   useEffect(() => {
     resetGame();
-  }, [gameMode, resetGame]); // Only reset on game mode change, not time control
+  }, [gameMode, timeControl]); 
   
   useEffect(() => {
     updateGameState();
