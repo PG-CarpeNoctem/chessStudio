@@ -99,22 +99,24 @@ export const useChessGame = () => {
 
     loadSettings();
 
-    // Preload sounds
-    if (typeof window !== 'undefined') {
-        moveSoundRef.current = new Audio('/sounds/move-self.mp3');
-        captureSoundRef.current = new Audio('/sounds/capture.mp3');
-        checkSoundRef.current = new Audio('/sounds/check.mp3');
-        gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
-        moveSoundRef.current.load();
-        captureSoundRef.current.load();
-        checkSoundRef.current.load();
-        gameOverSoundRef.current.load();
-    }
-
-
     window.addEventListener('storage', loadSettings);
     return () => window.removeEventListener('storage', loadSettings);
   }, []);
+
+  useEffect(() => {
+    if (enableSounds && typeof window !== 'undefined') {
+      moveSoundRef.current = new Audio('/sounds/move-self.mp3');
+      captureSoundRef.current = new Audio('/sounds/capture.mp3');
+      checkSoundRef.current = new Audio('/sounds/check.mp3');
+      gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
+    } else {
+      // Clear refs if sounds are disabled
+      moveSoundRef.current = null;
+      captureSoundRef.current = null;
+      checkSoundRef.current = null;
+      gameOverSoundRef.current = null;
+    }
+  }, [enableSounds]);
 
   const playSound = useCallback((sound: 'move' | 'capture' | 'check' | 'gameOver') => {
       if (!enableSounds) return;
@@ -127,7 +129,7 @@ export const useChessGame = () => {
       }
       if (audio) {
         audio.currentTime = 0;
-        audio.play().catch(e => console.error(`Error playing ${sound} sound:`, e));
+        audio.play().catch(e => console.warn(`Could not play sound '${sound}':`, e.message));
       }
   }, [enableSounds]);
 
@@ -260,7 +262,7 @@ export const useChessGame = () => {
         setHint(null);
         
         // Timer logic on successful move
-        if (isFirstMove && timeControl.type !== 'unlimited') {
+        if ((isFirstMove || !timerOn) && timeControl.type !== 'unlimited') {
             setTimerOn(true);
         }
 
@@ -273,10 +275,12 @@ export const useChessGame = () => {
         return true;
       }
     } catch (e) {
+      // This catch block will handle illegal moves from chess.js
+      console.error("Invalid move attempted: ", move, e);
       return false;
     }
     return false;
-  }, [timeControl, updateGameState, playSound]);
+  }, [timeControl, updateGameState, playSound, timerOn]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -420,34 +424,68 @@ export const useChessGame = () => {
 
     const g = gameRef.current;
     
-    if (g.turn() !== boardOrientation && gameMode === 'ai') {
+    // It is NOT the player's turn: Handle premoves
+    if (gameMode === 'ai' && g.turn() !== boardOrientation) {
       if (enablePremove) {
-          if (selectedSquare) {
-              const piece = g.get(selectedSquare);
-              if (piece && piece.color === boardOrientation) {
-                setPremove({ from: selectedSquare, to: square });
-              }
-              resetMoveSelection();
-          } else {
-              const piece = g.get(square);
-              if (piece && piece.color === boardOrientation) {
-                  setSelectedSquare(square);
-              }
+        if (selectedSquare) {
+          // A piece is already selected, so this click is the destination for the premove
+          const piece = g.get(selectedSquare);
+          if (piece && piece.color === boardOrientation) {
+            setPremove({ from: selectedSquare, to: square });
           }
+          resetMoveSelection();
+        } else {
+          // No piece selected, so this click selects a piece for premoving
+          const piece = g.get(square);
+          if (piece && piece.color === boardOrientation) {
+            setSelectedSquare(square);
+          }
+        }
       }
       return;
     }
+    
+    // It IS the player's turn: Handle regular moves
+    const pieceOnSquare = g.get(square);
 
     if (selectedSquare) {
-      attemptMove({ from: selectedSquare, to: square });
+      // A piece is already selected
+      if (square === selectedSquare) {
+        // Clicked the same square again, so deselect
+        resetMoveSelection();
+        return;
+      }
+      
+      const isPossible = possibleMoves.find(m => m.to === square);
+      if (isPossible) {
+        // Clicked on a valid destination square
+        attemptMove({ from: selectedSquare, to: square });
+      } else if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
+        // Clicked on another of their own pieces, so switch selection
+        setSelectedSquare(square);
+        setPossibleMoves(g.moves({ square, verbose: true }));
+      } else {
+        // Clicked on an invalid square
+        resetMoveSelection();
+      }
     } else {
-      const piece = g.get(square);
-      if (piece && piece.color === g.turn()) {
+      // No piece is selected yet
+      if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
+        // Select the piece
         setSelectedSquare(square);
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, gameOver, gameMode, turn, enablePremove, promotionMove, attemptMove, boardOrientation]);
+  }, [
+    boardOrientation,
+    enablePremove,
+    gameOver,
+    gameMode,
+    possibleMoves,
+    promotionMove,
+    selectedSquare,
+    attemptMove,
+  ]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -564,5 +602,6 @@ export const useChessGame = () => {
     promotionMove, cancelPromotion, handlePromotion,
   };
 };
+
 
     
