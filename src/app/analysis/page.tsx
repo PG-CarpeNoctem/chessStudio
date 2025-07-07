@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Dot as RechartsDot } from 'recharts';
 
 
 const classificationStyles: Record<string, { icon: React.ElementType, className: string, label: string }> = {
@@ -40,14 +41,108 @@ const renderEvalBar = (evaluation: number | undefined) => {
     if (evaluation === undefined) {
         return <div className="bg-white/50" style={{ height: '50%' }} />;
     }
-    // Cap evaluation at +/- 400 centipawns for visualization
-    const cappedEval = Math.max(-400, Math.min(400, evaluation));
+    // Cap evaluation at +/- 1000 centipawns for visualization
+    const cappedEval = Math.max(-1000, Math.min(1000, evaluation));
     // Normalize to a 0-1 range
-    const normalizedEval = (cappedEval + 400) / 800;
+    const normalizedEval = (cappedEval + 1000) / 2000;
     const heightPercentage = normalizedEval * 100;
 
     return <div className="bg-white transition-all duration-300 rounded-full" style={{ height: `${heightPercentage}%` }} />;
 };
+
+const EvaluationChart = ({ analysis, currentMoveIndex, onMoveSelect }: { analysis: AnalyzeGameOutput, currentMoveIndex: number, onMoveSelect: (index: number) => void }) => {
+    const chartData = analysis.analysis.map((move, index) => ({
+      name: `${Math.ceil((index + 1) / 2)}${index % 2 === 0 ? '.' : '...'} ${move.san}`,
+      moveNumber: index + 1,
+      evaluation: Math.max(-10, Math.min(10, move.evaluation / 100)), // Cap at +/- 10 pawns
+      classification: move.classification,
+    }));
+    
+    const currentMoveData = chartData[currentMoveIndex];
+    
+    const CustomDot = (props: any) => {
+        const { cx, cy, payload } = props;
+        const { classification, moveNumber } = payload;
+        const style = classificationStyles[classification];
+
+        if (!style || !['Brilliant', 'Great', 'Mistake', 'Blunder', 'Missed Win'].includes(classification)) {
+            return null;
+        }
+
+        const colorMap: Record<string, string> = {
+            'text-cyan-400': 'hsl(var(--primary))',
+            'text-blue-500': '#3b82f6',
+            'text-red-600': 'hsl(var(--destructive))',
+            'text-orange-500': '#f97316',
+            'text-red-700': 'hsl(var(--destructive))',
+        };
+
+        return (
+            <RechartsDot
+                cx={cx}
+                cy={cy}
+                r={4}
+                fill={colorMap[style.className] || 'grey'}
+                stroke={'hsl(var(--card))'}
+                strokeWidth={1}
+                className="cursor-pointer"
+                onClick={() => onMoveSelect(moveNumber - 1)}
+            />
+        );
+    };
+    
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-background/90 p-2 border border-border rounded-md text-xs shadow-lg">
+                    <p className="font-semibold">{payload[0].payload.name}</p>
+                    <p className="text-foreground">{`Eval: ${payload[0].value.toFixed(2)}`}</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+        <Card className="bg-stone-800 border-stone-700">
+            <CardHeader className="p-3 flex flex-row items-center justify-between">
+                 <CardTitle className="text-base font-semibold">Opening: {analysis.opening}</CardTitle>
+            </CardHeader>
+            <CardContent className="h-28 pr-4 pb-4 pl-2">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} onClick={(e) => e && e.activeTooltipIndex !== undefined && onMoveSelect(e.activeTooltipIndex)}>
+                        <defs>
+                            <linearGradient id="evalGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="50%" stopColor="rgba(255, 255, 255, 0.3)" stopOpacity={0.8}/>
+                                <stop offset="50%" stopColor="rgba(255, 255, 255, 0.3)" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="evalGradientNegative" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="50%" stopColor="rgba(0, 0, 0, 0.3)" stopOpacity={0}/>
+                                <stop offset="50%" stopColor="rgba(0, 0, 0, 0.3)" stopOpacity={0.8}/>
+                            </linearGradient>
+                        </defs>
+                        <YAxis domain={[-10, 10]} hide />
+                        <XAxis dataKey="moveNumber" hide />
+                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}/>
+                        <Area type="monotone" dataKey="evaluation" stroke="hsl(var(--foreground))" strokeWidth={1.5} fillOpacity={1} fill="url(#evalGradient)" />
+                        <Area type="monotone" dataKey="evaluation" stroke="hsl(var(--foreground))" strokeWidth={1.5} fillOpacity={1} fill="url(#evalGradientNegative)" />
+                        <RechartsDot r={0}
+                           // @ts-ignore
+                           content={<CustomDot />} 
+                        />
+                        {currentMoveData && (
+                            <ReferenceLine x={currentMoveData.moveNumber} stroke="hsl(var(--primary))" strokeWidth={1.5} ifOverflow="extendDomain">
+                               <RechartsDot r={5} fill="hsl(var(--primary))" stroke="white" strokeWidth={2} />
+                            </ReferenceLine>
+                        )}
+                    </AreaChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 function AnalysisLoadingState() {
   return (
@@ -147,6 +242,30 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
       const history = gameForMove.history({ verbose: true });
       return history[currentMoveIndex] || null;
   }, [analysis, currentMoveIndex]);
+  
+  const movePairs = useMemo(() => {
+    const pairs: any[][] = [];
+    if (!analysis?.analysis) return [];
+
+    let i = 0;
+    while (i < analysis.analysis.length) {
+        const move = analysis.analysis[i];
+        if (move.player === 'White') {
+            const nextMove = analysis.analysis[i + 1];
+            if (nextMove && nextMove.player === 'Black') {
+                pairs.push([move, nextMove]);
+                i += 2;
+            } else {
+                pairs.push([move]);
+                i += 1;
+            }
+        } else { // Black move starts the game
+            pairs.push([null, move]);
+            i += 1;
+        }
+    }
+    return pairs;
+  }, [analysis]);
 
   const currentMoveData = analysis?.analysis[currentMoveIndex];
   const totalMoves = analysis.analysis.length;
@@ -162,15 +281,15 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
             </div>
             <span>{pgnHeaders.Result}</span>
         </div>
-        <div className="w-full max-w-[80vh] flex items-stretch justify-center gap-4">
-            <div className="flex-shrink-0 flex items-center gap-1.5 py-10">
+        <div className="w-full max-w-[80vh] flex items-stretch justify-center gap-6">
+            <div className="flex-shrink-0 flex items-center gap-4 py-10">
                 <div className="h-full w-3 bg-black/20 rounded-full flex flex-col-reverse relative overflow-hidden">
                     {renderEvalBar(currentMoveData?.evaluation)}
                 </div>
                 <div className="h-full relative flex flex-col justify-between text-xs text-stone-400 font-mono">
-                    <span>+4</span>
+                    <span>+10</span>
                     <span className="absolute top-1/2 left-0 -translate-y-1/2">0</span>
-                    <span>-4</span>
+                    <span>-10</span>
                 </div>
             </div>
             <div className="w-full aspect-square">
@@ -218,12 +337,8 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
           
           <ScrollArea className="flex-1 mt-4">
             <TabsContent value="report" className="space-y-4 pr-2">
-                <Card className="bg-stone-800 border-stone-700">
-                    <CardHeader className="p-3">
-                         <CardTitle className="text-base font-semibold">Opening: {analysis.opening}</CardTitle>
-                    </CardHeader>
-                </Card>
-
+                <EvaluationChart analysis={analysis} currentMoveIndex={currentMoveIndex} onMoveSelect={updateBoardAtMove} />
+                
                 <Card className="bg-stone-800 border-stone-700">
                     <CardHeader className="p-3">
                         <CardTitle className="text-base font-semibold">Accuracies</CardTitle>
@@ -303,14 +418,7 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                     </Card>
                 )}
                 <div className="grid grid-cols-[auto_1fr_1fr] text-sm bg-stone-800/50 rounded-md p-1">
-                  {analysis.analysis.reduce((acc, move, index) => {
-                      if (move.player === 'White') {
-                          acc.push([move]);
-                      } else if (acc.length > 0) {
-                          acc[acc.length - 1].push(move);
-                      }
-                      return acc;
-                  }, [] as [any, any][]).map((movePair, pairIndex) => {
+                  {movePairs.map((movePair, pairIndex) => {
                       const [whiteMove, blackMove] = movePair;
                       return (
                           <div key={pairIndex} className="grid grid-cols-subgrid col-span-3 items-center border-b border-stone-700 last:border-b-0">

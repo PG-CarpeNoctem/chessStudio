@@ -90,7 +90,7 @@ Your output MUST be a JSON object conforming to the provided schema. Pay close a
 
 0.  **pgn**: Return the exact PGN string you analyzed.
 1.  **summary**: A brief, high-level summary of the game's flow, key themes, and final outcome.
-2.  **analysis**: A detailed, move-by-move analysis. For each move in the PGN, provide:
+2.  **analysis**: A detailed, move-by-move analysis. It is absolutely critical that the 'analysis' array contains an entry for every single move in the PGN, from the first to the very last. Do not truncate the list under any circumstances. Double-check your output to ensure the move count matches the PGN's move count. For each move in the PGN, provide:
     - **classification**: Classify each move according to these strict, engine-based definitions:
       - **Brilliant (!!)**: A very rare, difficult-to-find move that is not only the best but also involves a significant sacrifice or a deep, non-obvious strategic idea that secures a winning advantage.
       - **Great (!)**: A difficult-to-find move that creates a significant advantage. It is the best move but not as sacrificial or surprising as a brilliant one. Often the start of a winning combination.
