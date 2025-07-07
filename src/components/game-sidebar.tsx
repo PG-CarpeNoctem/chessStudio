@@ -112,38 +112,40 @@ export function GameSidebar({
                         <CardTitle className='text-base'>Game Controls</CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                         <div className="grid grid-cols-2 gap-2">
-                            <Button onClick={resetGame} size="sm">
+                         <div className="flex flex-col gap-3">
+                            <Button onClick={resetGame}>
                                 <Play />
                                 New Game
                             </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href="/history">
-                                    <ScrollText />
-                                    Past Games
-                                </Link>
-                            </Button>
-                            <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
-                            <Undo2 />
-                            Undo
-                            </Button>
-                            <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
-                            <Redo2 />
-                            Redo
-                            </Button>
-                             <Button onClick={offerDraw} disabled={!!gameOver} variant="outline" size="sm">
-                                <Handshake />
-                                Offer Draw
-                            </Button>
-                             <Button onClick={resignGame} disabled={!!gameOver} variant="outline" size="sm">
-                                <Flag />
-                                Resign
-                            </Button>
-                            <Button onClick={flipBoard} variant="outline" size="sm" className="col-span-2">
-                                <RefreshCw />
-                                Flip Board
-                            </Button>
-                         </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button onClick={offerDraw} disabled={!!gameOver} variant="outline" size="sm">
+                                    <Handshake />
+                                    Offer Draw
+                                </Button>
+                                <Button onClick={resignGame} disabled={!!gameOver} variant="outline" size="sm">
+                                    <Flag />
+                                    Resign
+                                </Button>
+                                <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
+                                    <Undo2 />
+                                    Undo
+                                </Button>
+                                <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
+                                    <Redo2 />
+                                    Redo
+                                </Button>
+                                <Button onClick={flipBoard} variant="outline" size="sm">
+                                    <RefreshCw />
+                                    Flip Board
+                                </Button>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href="/history">
+                                        <ScrollText />
+                                        Past Games
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             

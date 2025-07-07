@@ -144,13 +144,80 @@ const EvaluationChart = ({ analysis, currentMoveIndex, onMoveSelect }: { analysi
 };
 
 
+// The new animated chart component for the loading screen
+const LoadingChart = () => {
+    return (
+        <div className="w-full max-w-lg mx-auto bg-[#262522] rounded-lg shadow-lg border-stone-700 overflow-hidden">
+            <svg viewBox="0 0 400 100" className="w-full h-auto block">
+                <defs>
+                    <clipPath id="chart-clip">
+                        <rect x="0" y="0" width="0" height="100">
+                            <animate attributeName="width" from="0" to="400" dur="4s" fill="freeze" repeatCount="indefinite" />
+                        </rect>
+                    </clipPath>
+                    <style>
+                        {`
+                          @keyframes pop-in {
+                            0% { opacity: 0; transform: scale(0.5); }
+                            100% { opacity: 1; transform: scale(1); }
+                          }
+                          .dot-animation {
+                            animation-name: pop-in;
+                            animation-duration: 0.4s;
+                            animation-timing-function: ease-out;
+                            animation-fill-mode: forwards;
+                            opacity: 0;
+                          }
+                        `}
+                    </style>
+                </defs>
+
+                <g clipPath="url(#chart-clip)">
+                    {/* Background Areas */}
+                    <path
+                        d="M0 50 C 20 50, 40 45, 60 48 S 100 55, 120 52 S 160 40, 180 30 S 200 15, 220 20 S 240 30, 260 25 S 280 40, 300 45 S 340 50, 360 48 S 380 45, 400 50 V 0 H 0 Z"
+                        fill="black"
+                        opacity="0.2"
+                    />
+                    <path
+                        d="M0 50 C 20 50, 40 45, 60 48 S 100 55, 120 52 S 160 40, 180 30 S 200 15, 220 20 S 240 30, 260 25 S 280 40, 300 45 S 340 50, 360 48 S 380 45, 400 50 V 100 H 0 Z"
+                        fill="white"
+                        opacity="0.2"
+                    />
+                    {/* The wiggly evaluation line */}
+                    <path
+                        d="M0 50 C 20 50, 40 45, 60 48 S 100 55, 120 52 S 160 40, 180 30 S 200 15, 220 20 S 240 30, 260 25 S 280 40, 300 45 S 340 50, 360 48 S 380 45, 400 50"
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeWidth="1"
+                        fill="none"
+                    />
+                    {/* Center line */}
+                    <line x1="0" y1="50" x2="400" y2="50" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" strokeDasharray="2 2" />
+
+                    {/* The dots */}
+                    <circle className="dot-animation" cx="80" cy="53" r="3" fill="#3b82f6" style={{ animationDelay: '0.8s' }} />
+                    <circle className="dot-animation" cx="100" cy="55" r="3" fill="#3b82f6" style={{ animationDelay: '1s' }} />
+                    <circle className="dot-animation" cx="180" cy="30" r="3" fill="#ef4444" style={{ animationDelay: '1.8s' }} />
+                    <circle className="dot-animation" cx="205" cy="18" r="3" fill="#10b981" style={{ animationDelay: '2.1s' }} />
+                    <circle className="dot-animation" cx="220" cy="20" r="3" fill="#10b981" style={{ animationDelay: '2.2s' }} />
+                    <circle className="dot-animation" cx="280" cy="40" r="3" fill="#ef4444" style={{ animationDelay: '2.8s' }} />
+                    <circle className="dot-animation" cx="320" cy="48" r="3" fill="#3b82f6" style={{ animationDelay: '3.2s' }} />
+                </g>
+            </svg>
+        </div>
+    );
+};
+
+
 function AnalysisLoadingState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 text-center h-screen bg-stone-900 text-white">
-      <h2 className="text-2xl font-semibold">Evaluating your game...</h2>
-      <p className="text-muted-foreground">Our AI is charting the peaks and valleys of every move.</p>
-      <div className="w-full max-w-md mt-4">
-          <Progress value={50} className="h-2" />
+    <div className="flex flex-col items-center justify-center gap-6 text-center h-screen bg-stone-900 text-white">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold">Evaluating your game...</h2>
+        <p className="text-muted-foreground">Our AI is charting the peaks and valleys of every move.</p>
+      </div>
+      <div className="w-full max-w-lg mt-2">
+        <LoadingChart />
       </div>
     </div>
   );
