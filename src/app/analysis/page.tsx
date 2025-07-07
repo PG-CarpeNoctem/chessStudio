@@ -10,12 +10,10 @@ import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap, RotateCw, Settings, Share2, ArrowLeft, Bot, Users } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
-import type { ChessSquare, ChessMove } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import type { ChessSquare } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,29 +21,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const classificationStyles: Record<string, { icon: React.ElementType, className: string, label: string }> = {
   Brilliant: { icon: Gem, className: 'text-cyan-400', label: 'Brilliant' },
-  Critical: { icon: Zap, className: 'text-blue-500', label: 'Critical' },
+  Great: { icon: Zap, className: 'text-blue-500', label: 'Great' },
   Best: { icon: Star, className: 'text-green-500', label: 'Best' },
   Excellent: { icon: ThumbsUp, className: 'text-teal-400', label: 'Excellent' },
+  Good: { icon: Check, className: 'text-lime-500', label: 'Good' },
   Okay: { icon: Check, className: 'text-lime-400', label: 'Okay' },
+  Book: { icon: BookOpen, className: 'text-gray-400', label: 'Book' },
   Theory: { icon: BookOpen, className: 'text-gray-400', label: 'Theory' },
   Inaccuracy: { icon: HelpCircle, className: 'text-yellow-500', label: 'Inaccuracy' },
   Mistake: { icon: AlertCircle, className: 'text-orange-500', label: 'Mistake' },
   Blunder: { icon: AlertTriangle, className: 'text-red-600', label: 'Blunder' },
   Forced: { icon: Target, className: 'text-indigo-400', label: 'Forced' },
-  // Map old values to new ones if they appear
-  Great: { icon: Zap, className: 'text-blue-500', label: 'Critical' },
-  Good: { icon: Check, className: 'text-lime-400', label: 'Okay' },
-  Book: { icon: BookOpen, className: 'text-gray-400', label: 'Theory' },
 };
-const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Critical', 'Best', 'Excellent', 'Okay', 'Theory', 'Inaccuracy', 'Mistake', 'Blunder'];
-
-
-const chartConfig = {
-  evaluation: {
-    label: "Evaluation",
-    color: "hsl(var(--foreground))",
-  },
-} satisfies ChartConfig;
+const classificationOrder: (keyof typeof classificationStyles)[] = ['Brilliant', 'Great', 'Best', 'Excellent', 'Good', 'Okay', 'Book', 'Inaccuracy', 'Mistake', 'Blunder', 'Forced'];
 
 const renderEvalBar = (evaluation: number | undefined) => {
     if (evaluation === undefined) {
@@ -109,42 +97,42 @@ function AnalysisFormComponent({ onAnalyze }: { onAnalyze: (pgn: string) => void
 
 function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) {
   const router = useRouter();
-  const [game, setGame] = useState(new Chess());
-  const [board, setBoard] = useState<any[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string}>({});
+
+  const gameAtMove = useMemo(() => {
+    if (!analysis || !analysis.pgn) return new Chess();
+    
+    const gameForReplay = new Chess();
+    gameForReplay.loadPgn(analysis.pgn);
+    const history = gameForReplay.history({ verbose: true });
+    
+    const boardAtMove = new Chess();
+    for (let i = 0; i <= currentMoveIndex; i++) {
+      if (history[i]) {
+        boardAtMove.move(history[i].san);
+      }
+    }
+    return boardAtMove;
+  }, [analysis, currentMoveIndex]);
+
+  const boardState = useMemo(() => {
+    return gameAtMove.board().flat().filter((p): p is NonNullable<typeof p> => p !== null).map(p => ({ square: p.square, piece: { type: p.type, color: p.color } }));
+  }, [gameAtMove]);
 
   useEffect(() => {
      const gameForHeaders = new Chess();
      gameForHeaders.loadPgn(analysis.pgn);
      setPgnHeaders(gameForHeaders.header());
-     updateBoardAtMove(analysis.analysis.length - 1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+     setCurrentMoveIndex(analysis.analysis.length - 1);
   }, [analysis]);
   
   const updateBoardAtMove = useCallback((index: number) => {
-    if (!analysis || !analysis.pgn) return;
-    
-    const gameForReplay = new Chess();
-    gameForReplay.loadPgn(analysis.pgn);
-
-    const history = gameForReplay.history({ verbose: true });
-    
-    const boardAtMove = new Chess();
-    for (let i = 0; i <= index; i++) {
-      if (history[i]) {
-        boardAtMove.move(history[i].san);
-      }
-    }
-    
-    setGame(boardAtMove);
-    const boardData = boardAtMove.board().flat().filter((p): p is NonNullable<typeof p> => p !== null).map(p => ({ square: p.square, piece: { type: p.type, color: p.color } }));
-    setBoard(boardData);
     setCurrentMoveIndex(index);
-  }, [analysis]);
+  }, []);
 
-  const highlightedMove = useMemo(() => {
-      if (!analysis || !analysis.pgn || currentMoveIndex < 0 || !analysis.analysis[currentMoveIndex]) return null;
+  const lastMove = useMemo(() => {
+      if (!analysis || !analysis.pgn || currentMoveIndex < 0) return null;
       const gameForMove = new Chess();
       gameForMove.loadPgn(analysis.pgn);
       const history = gameForMove.history({ verbose: true });
@@ -165,17 +153,17 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
             <span>{pgnHeaders.Result}</span>
         </div>
         <div className="w-full max-w-[80vh] flex items-center gap-2">
-          <div className="h-[80vh] w-3 bg-black/20 rounded-full flex flex-col-reverse relative">
+          <div className="h-full w-3 bg-black/20 rounded-full flex flex-col-reverse relative overflow-hidden">
              {renderEvalBar(currentMoveData?.evaluation)}
           </div>
           <div className="w-full aspect-square">
             <ChessBoard
-                board={board}
+                board={boardState}
                 onSquareClick={() => {}}
                 onSquareRightClick={() => {}}
                 selectedSquare={null}
                 possibleMoves={[]}
-                lastMove={highlightedMove ? { from: highlightedMove.from, to: highlightedMove.to, san: highlightedMove.san } : null}
+                lastMove={lastMove ? { from: lastMove.from, to: lastMove.to, san: lastMove.san } : null}
                 boardTheme="classic"
                 showPossibleMoves={false}
                 showLastMoveHighlight={true}
@@ -200,7 +188,6 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
           <div className="flex items-center gap-1">
             <Button onClick={() => router.push('/')} variant="ghost" size="icon"><ArrowLeft className="h-5 w-5"/></Button>
             <Button variant="ghost" size="icon"><RotateCw className="h-5 w-5"/></Button>
-            <Button variant="ghost" size="icon"><Settings className="h-5 w-5"/></Button>
             <Button variant="ghost" size="icon"><Share2 className="h-5 w-5"/></Button>
           </div>
         </div>
@@ -213,17 +200,6 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
           
           <ScrollArea className="flex-1 mt-4">
             <TabsContent value="report" className="space-y-4 pr-2">
-                {currentMoveData && (
-                     <Card className="bg-stone-800 border-stone-700">
-                        <CardContent className="p-3">
-                            <div className="flex items-center gap-2">
-                                {React.createElement(classificationStyles[currentMoveData.classification].icon, { className: cn("h-6 w-6", classificationStyles[currentMoveData.classification].className)})}
-                                <p className="font-semibold">{currentMoveData.san} is {classificationStyles[currentMoveData.classification].label}</p>
-                            </div>
-                            <p className="text-sm text-stone-400 mt-1">{currentMoveData.explanation}</p>
-                        </CardContent>
-                    </Card>
-                )}
                 <Card className="bg-stone-800 border-stone-700">
                     <CardHeader className="p-3">
                          <CardTitle className="text-base font-semibold">Opening: {analysis.opening}</CardTitle>
@@ -279,9 +255,36 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                         </Table>
                     </CardContent>
                 </Card>
+                 <Card className="bg-stone-800 border-stone-700">
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-base font-semibold">Key Moments</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 space-y-2">
+                        {analysis.keyMoments.map((moment) => (
+                           <div key={moment.moveNumber} onClick={() => updateBoardAtMove(moment.moveNumber - 1)} className="text-sm p-2 rounded-md cursor-pointer hover:bg-stone-700/50">
+                               <p className="font-semibold">{moment.moveNumber}. {moment.san} ({moment.player})</p>
+                               <p className="text-stone-400">{moment.description}</p>
+                           </div>
+                        ))}
+                    </CardContent>
+                </Card>
             </TabsContent>
-            <TabsContent value="analysis" className="pr-2">
-                <div className="grid grid-cols-[auto_1fr_1fr] text-sm">
+            <TabsContent value="analysis" className="space-y-4 pr-2">
+                {currentMoveData && (
+                     <Card className="bg-stone-800 border-stone-700">
+                        <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                                {React.createElement(classificationStyles[currentMoveData.classification].icon, { className: cn("h-6 w-6", classificationStyles[currentMoveData.classification].className)})}
+                                <p className="font-semibold">{currentMoveData.san} is a {classificationStyles[currentMoveData.classification].label} move</p>
+                            </div>
+                            <p className="text-sm text-stone-400 mt-1">{currentMoveData.explanation}</p>
+                            {currentMoveData.bestAlternative && (
+                                <p className="text-sm text-green-400 mt-2">The best move was {currentMoveData.bestAlternative}</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+                <div className="grid grid-cols-[auto_1fr_1fr] text-sm bg-stone-800/50 rounded-md p-1">
                   {analysis.analysis.reduce((acc, move, index) => {
                       if (move.player === 'White') {
                           acc.push([move]);
@@ -295,13 +298,13 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                           <div key={pairIndex} className="grid grid-cols-subgrid col-span-3 items-center border-b border-stone-700 last:border-b-0">
                               <div className="text-right text-stone-400 font-mono pr-2">{pairIndex + 1}.</div>
                               {whiteMove ? (
-                                  <div onClick={() => updateBoardAtMove(whiteMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === whiteMove.moveNumber -1 && "bg-blue-600/30")}>
+                                  <div onClick={() => updateBoardAtMove(whiteMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === whiteMove.moveNumber -1 && "bg-blue-600/30")}>
                                       {React.createElement(classificationStyles[whiteMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[whiteMove.classification].className)})}
                                       <span className="font-semibold">{whiteMove.san}</span>
                                   </div>
                               ) : <div />}
                               {blackMove ? (
-                                  <div onClick={() => updateBoardAtMove(blackMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === blackMove.moveNumber -1 && "bg-blue-600/30")}>
+                                  <div onClick={() => updateBoardAtMove(blackMove.moveNumber - 1)} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer hover:bg-stone-700/50", currentMoveIndex === blackMove.moveNumber -1 && "bg-blue-600/30")}>
                                       {React.createElement(classificationStyles[blackMove.classification].icon, { className: cn("h-4 w-4", classificationStyles[blackMove.classification].className)})}
                                       <span className="font-semibold">{blackMove.san}</span>
                                   </div>
@@ -345,7 +348,10 @@ function AnalysisPageComponent() {
 
     try {
       const chess = new Chess();
+      // Allow for sloppy PGNs
+      const headers = chess.header();
       chess.loadPgn(cleanedPgn, { sloppy: true });
+      chess.header(...Object.entries(headers)); // Restore headers after load
 
       if (chess.history().length === 0) {
         throw new Error("Invalid or incomplete PGN.");
@@ -362,13 +368,16 @@ function AnalysisPageComponent() {
   }, [toast]);
   
   useEffect(() => {
-    if (pgn) {
+    if (pgn && !analysis) {
       handleAnalyze(pgn);
     }
-  }, [pgn, handleAnalyze]);
+  }, [pgn, handleAnalyze, analysis]);
 
   if (!pgn) {
-    return <AnalysisFormComponent onAnalyze={setPgn} />;
+    return <AnalysisFormComponent onAnalyze={(newPgn) => {
+        // This will update the state and trigger the analysis
+        setPgn(newPgn);
+    }} />;
   }
 
   if (isLoading) {
