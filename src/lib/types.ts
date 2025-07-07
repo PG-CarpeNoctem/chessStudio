@@ -11,6 +11,8 @@ export type GameMode = 'ai' | 'two-player';
 export type TimeControl = string;
 export type CoordinatesDisplay = 'inside' | 'outside' | 'none';
 export type AutoPromote = 'q' | 'r' | 'b' | 'n' | 'ask';
+export type DirectMessagePrivacy = 'everyone' | 'friends' | 'nobody';
+export type GameChatPrivacy = 'everyone' | 'request' | 'friends';
 
 export type CustomColors = {
   boardLight: string;
