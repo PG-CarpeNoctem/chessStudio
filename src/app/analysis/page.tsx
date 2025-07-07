@@ -48,7 +48,6 @@ function AnalysisPageComponent() {
   const [pgn, setPgn] = useState('');
   const [analysis, setAnalysis] = useState<AnalyzeGameOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   const [game, setGame] = useState(new Chess());
   const [board, setBoard] = useState<any[]>([]);
@@ -76,16 +75,6 @@ function AnalysisPageComponent() {
     setCurrentMoveIndex(index);
   }, [analysis]);
 
-  useEffect(() => {
-    const pgnFromUrl = searchParams.get('pgn');
-    if (pgnFromUrl) {
-      const decodedPgn = decodeURIComponent(pgnFromUrl);
-      setPgn(decodedPgn);
-      handleAnalyze(decodedPgn);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
   const handleAnalyze = async (pgnToAnalyze: string) => {
     if (!pgnToAnalyze.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'PGN input cannot be empty.' });
@@ -93,32 +82,21 @@ function AnalysisPageComponent() {
     }
     
     setIsLoading(true);
-    setError(null);
     setAnalysis(null);
 
     try {
       const chess = new Chess();
-      let pgnLoaded = false;
-      try {
-        // Use loadPgn for its ability to parse headers and moves.
-        pgnLoaded = chess.loadPgn(pgnToAnalyze, { sloppy: true });
-        if(!pgnLoaded || chess.history().length === 0){
-             // If loadPgn fails but it might be a FEN
-             try {
-                const fenChess = new Chess();
-                fenChess.load(pgnToAnalyze); // This throws if not a valid FEN.
-                throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
-             } catch(fenError: any) {
-                if(fenError.message.startsWith("A FEN position")) throw fenError;
-                // Otherwise, it was just invalid PGN.
-                throw new Error("Invalid PGN provided. Please check the game data and try again.");
-             }
+      // The sloppy flag helps chess.js parse PGNs that might have minor formatting issues.
+      const pgnLoaded = chess.loadPgn(pgnToAnalyze, { sloppy: true });
+
+      // If chess.js can't load the PGN or if there are no moves, it's considered invalid for analysis.
+      if (!pgnLoaded || chess.history().length === 0) {
+        // A more robust check for FEN to provide a better error message.
+        const isFen = /^\s*([rnbqkp1-8]+\/){7}([rnbqkp1-8]+)\s[bw]\s(-|K?Q?k?q?)\s(-|[a-h][36])\s\d+\s\d+\s*$/.test(pgnToAnalyze);
+        if (isFen) {
+            throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
         }
-      } catch (e: any) {
-         setError(e.message || "An unknown error occurred while parsing the PGN.");
-         toast({ variant: 'destructive', title: 'Analysis Failed', description: e.message || "An unknown error occurred while parsing the PGN." });
-         setIsLoading(false);
-         return;
+        throw new Error("Invalid or incomplete PGN provided. Please check the game data and try again.");
       }
       
       setPgnHeaders(chess.header());
@@ -131,12 +109,21 @@ function AnalysisPageComponent() {
 
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred.';
-      setError(errorMessage);
       toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const pgnFromUrl = searchParams.get('pgn');
+    if (pgnFromUrl) {
+      const decodedPgn = decodeURIComponent(pgnFromUrl);
+      setPgn(decodedPgn);
+      handleAnalyze(decodedPgn);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const currentMoveData = analysis?.analysis[currentMoveIndex];
   
@@ -366,7 +353,6 @@ function AnalysisPageComponent() {
                     rows={10}
                     className="font-mono"
                 />
-                {error && <p className="text-destructive mt-2 text-sm">{error}</p>}
             </CardContent>
             <CardContent>
                  <Button onClick={() => handleAnalyze(pgn)} disabled={isLoading} className="w-full">
