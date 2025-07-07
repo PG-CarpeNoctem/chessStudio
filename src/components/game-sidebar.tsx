@@ -28,7 +28,6 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
-import { Separator } from './ui/separator';
 import Link from 'next/link';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
@@ -37,6 +36,11 @@ type GameSidebarProps = Pick<ReturnType<typeof useChessGame>,
 > & {
     className?: string;
 };
+
+const formatTimeControlToString = (tc: TimeControl): string => {
+    if (tc.type === 'unlimited') return 'unlimited';
+    return `${tc.initial / 60}+${tc.increment}`;
+}
 
 export function GameSidebar({
   resetGame,
@@ -55,14 +59,26 @@ export function GameSidebar({
 }: GameSidebarProps) {
   const { toast } = useToast();
   const [isCustomTimeDialogOpen, setIsCustomTimeDialogOpen] = useState(false);
+  
+  // State for the custom time dialog
+  const [customMode, setCustomMode] = useState<TimeControl['type']>('fischer');
   const [customMinutes, setCustomMinutes] = useState('10');
   const [customIncrement, setCustomIncrement] = useState('0');
 
   const handleSetCustomTime = () => {
       const mins = parseInt(customMinutes, 10) || 10;
       const incs = parseInt(customIncrement, 10) || 0;
-      setTimeControl(`${mins}+${incs}`);
+      setTimeControl({ type: customMode, initial: mins * 60, increment: incs });
       setIsCustomTimeDialogOpen(false);
+  };
+  
+  const handlePresetChange = (value: string) => {
+    if (value === 'unlimited') {
+        setTimeControl({ type: 'unlimited', initial: Infinity, increment: 0 });
+        return;
+    }
+    const [minutes, increment] = value.split('+').map(Number);
+    setTimeControl({ type: 'fischer', initial: minutes * 60, increment: increment || 0 });
   };
 
   const handleAdjustDifficulty = async (level: 'Beginner' | 'Intermediate' | 'Advanced') => {
@@ -139,7 +155,7 @@ export function GameSidebar({
                         <div className="space-y-1">
                             <Label htmlFor="time-control" className='text-xs'>Time Control</Label>
                              <div className="flex gap-2">
-                                <Select onValueChange={(value) => setTimeControl(value as TimeControl)} value={timeControl}>
+                                <Select onValueChange={handlePresetChange} value={formatTimeControlToString(timeControl)}>
                                     <SelectTrigger id="time-control" className="h-9">
                                         <SelectValue placeholder="Select time" />
                                     </SelectTrigger>
@@ -162,17 +178,32 @@ export function GameSidebar({
                                         <DialogHeader>
                                             <DialogTitle>Custom Time Control</DialogTitle>
                                             <DialogDescription>
-                                                Set the initial time and increment for each player.
+                                                Set the initial time and increment/delay for each player.
                                             </DialogDescription>
                                         </DialogHeader>
-                                        <div className="grid grid-cols-2 gap-4 py-4">
+                                        <div className="space-y-4 py-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="minutes">Initial (minutes)</Label>
-                                                <Input id="minutes" type="number" value={customMinutes} onChange={(e) => setCustomMinutes(e.target.value)} />
+                                                <Label htmlFor="time-mode">Time Mode</Label>
+                                                <Select value={customMode} onValueChange={(v) => setCustomMode(v as TimeControl['type'])}>
+                                                    <SelectTrigger id="time-mode">
+                                                        <SelectValue placeholder="Select mode" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="fischer">Fischer Increment</SelectItem>
+                                                        <SelectItem value="bronstein">Bronstein Delay</SelectItem>
+                                                        <SelectItem value="delay">Simple Delay</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="increment">Increment (seconds)</Label>
-                                                <Input id="increment" type="number" value={customIncrement} onChange={(e) => setCustomIncrement(e.target.value)} />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="minutes">Initial (minutes)</Label>
+                                                    <Input id="minutes" type="number" value={customMinutes} onChange={(e) => setCustomMinutes(e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="increment">Increment/Delay (s)</Label>
+                                                    <Input id="increment" type="number" value={customIncrement} onChange={(e) => setCustomIncrement(e.target.value)} />
+                                                </div>
                                             </div>
                                         </div>
                                         <DialogFooter>

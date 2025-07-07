@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -10,14 +11,6 @@ type BoardState = { square: ChessSquare; piece: ChessPiece }[];
 
 const pieceValues: { [key in ChessPiece['type']]: number } = {
   p: 1, n: 3, b: 3, r: 5, q: 9, k: 0,
-};
-
-const parseTimeControl = (timeControl: TimeControl) => {
-    if (timeControl === 'unlimited') {
-        return { initialTime: Infinity, increment: 0 };
-    }
-    const [minutes, increment] = timeControl.split('+').map(Number);
-    return { initialTime: minutes * 60 * 1000, increment: (increment || 0) * 1000 };
 };
 
 const getSetting = <T,>(key: string, defaultValue: T): T => {
@@ -49,30 +42,28 @@ export const useChessGame = () => {
   const gameRef = useRef(new Chess());
   const { toast } = useToast();
   
-  // Sound refs
-  // NOTE: For sounds to work, you must place corresponding .mp3 files
-  // in the /public/sounds/ directory. E.g., /public/sounds/move-self.mp3
   const moveSoundRef = useRef<HTMLAudioElement | null>(null);
   const captureSoundRef = useRef<HTMLAudioElement | null>(null);
   const checkSoundRef = useRef<HTMLAudioElement | null>(null);
   const gameOverSoundRef = useRef<HTMLAudioElement | null>(null);
 
-  // Game State
   const [board, setBoard] = useState<BoardState>([]);
   const [history, setHistory] = useState<readonly ChessMove[]>([]);
   const [turn, setTurn] = useState<PlayerColor>('w');
   const [pgn, setPgn] = useState('');
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
 
-  // UI and Interaction State
   const [selectedSquare, setSelectedSquare] = useState<ChessSquare | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<ChessMove[]>([]);
   const [isAITurn, setIsAITurn] = useState(false);
   const [skillLevel, setSkillLevel] = useState(4);
   const [gameMode, setGameMode] = useState<GameMode>('ai');
-  const [timeControl, setTimeControl] = useState<TimeControl>('10+0');
+  
+  const [timeControl, setTimeControl] = useState<TimeControl>({ type: 'fischer', initial: 600, increment: 0 });
   const [time, setTime] = useState({ w: 600000, b: 600000 });
   const [timerOn, setTimerOn] = useState(false);
+  const timerDelayRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [hint, setHint] = useState<ChessMove | null>(null);
   const [capturedPieces, setCapturedPieces] = useState<{ w: ChessPiece[]; b: ChessPiece[] }>({ w: [], b: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
@@ -80,7 +71,6 @@ export const useChessGame = () => {
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
   const [promotionMove, setPromotionMove] = useState<{ from: ChessSquare; to: ChessSquare } | null>(null);
 
-  // UI Settings state
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
   const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
@@ -93,7 +83,6 @@ export const useChessGame = () => {
   const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
   const [enableSounds, setEnableSounds] = useState<boolean>(true);
 
-  // Effect to load settings from localStorage on client-side after hydration
   useEffect(() => {
     const loadSettings = () => {
       setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
@@ -110,7 +99,6 @@ export const useChessGame = () => {
 
     loadSettings();
 
-    // Initialize Audio objects on the client
     moveSoundRef.current = new Audio('/sounds/move-self.mp3');
     captureSoundRef.current = new Audio('/sounds/capture.mp3');
     checkSoundRef.current = new Audio('/sounds/check.mp3');
@@ -214,7 +202,6 @@ export const useChessGame = () => {
     }
     
     setPgn(g.pgn());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playSound]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
@@ -227,20 +214,33 @@ export const useChessGame = () => {
         else playSound('move');
         if (g.isCheck()) playSound('check');
 
-        if (timeControl !== 'unlimited') {
-            const { increment } = parseTimeControl(timeControl);
-            setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + increment }));
+        if (timeControl.type === 'fischer' || timeControl.type === 'bronstein') {
+            setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + (timeControl.increment * 1000) }));
         }
+
         updateGameState();
         setHint(null);
-        if (!timerOn && timeControl !== 'unlimited') setTimerOn(true);
+        
+        // Timer logic on successful move
+        setTimerOn(false);
+        if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+
+        if (timeControl.type !== 'unlimited' && !g.isGameOver()) {
+            if (timeControl.type === 'delay') {
+                timerDelayRef.current = setTimeout(() => {
+                    setTimerOn(true);
+                }, timeControl.increment * 1000);
+            } else {
+                setTimerOn(true);
+            }
+        }
         return true;
       }
     } catch (e) {
       return false;
     }
     return false;
-  }, [timeControl, timerOn, updateGameState, playSound]);
+  }, [timeControl, updateGameState, playSound]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -304,17 +304,19 @@ export const useChessGame = () => {
     const g = gameRef.current;
     if (gameOver) return;
 
-    // If it's not the player's turn, treat it as a premove
-    if (g.turn() !== 'w' && gameMode === 'ai') {
+    if (g.turn() !== boardOrientation && gameMode === 'ai') {
       if (enablePremove) {
-        setPremove({ from, to });
-        resetMoveSelection();
+        const piece = g.get(from);
+        if (piece && piece.color === boardOrientation) {
+          setPremove({ from, to });
+          resetMoveSelection();
+        }
       }
       return;
     }
     
     attemptMove({ from, to });
-  }, [gameOver, gameMode, enablePremove, attemptMove]);
+  }, [gameOver, gameMode, enablePremove, attemptMove, boardOrientation]);
 
   const resetGame = useCallback(() => {
     const g = new Chess();
@@ -324,7 +326,9 @@ export const useChessGame = () => {
     g.setHeader('Date', new Date().toISOString().split('T')[0]);
     gameRef.current = g;
 
-    const { initialTime } = parseTimeControl(timeControl);
+    const initialMs = timeControl.type === 'unlimited' ? Infinity : timeControl.initial * 1000;
+    setTime({ w: initialMs, b: initialMs });
+
     updateGameState();
     resetMoveSelection();
     setIsAITurn(false);
@@ -332,12 +336,18 @@ export const useChessGame = () => {
     setPremove(null);
     setPendingMove(null);
     setPromotionMove(null);
-    setTime({ w: initialTime, b: initialTime });
-    setTimerOn(false);
+    
+    setTimerOn(timeControl.type !== 'unlimited');
+    if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+    if (timeControl.type === 'delay') {
+        setTimerOn(false);
+        timerDelayRef.current = setTimeout(() => setTimerOn(true), timeControl.increment * 1000);
+    }
+
   }, [updateGameState, timeControl, gameMode]);
 
   useEffect(() => {
-    if (gameMode === 'ai' && turn === 'b' && !gameOver) {
+    if (gameMode === 'ai' && turn !== boardOrientation && !gameOver) {
       const performAIMove = async () => {
         setIsAITurn(true);
         try {
@@ -348,7 +358,6 @@ export const useChessGame = () => {
           makeMove(suggestedMove);
           
           if (premove) {
-              // check if premove is valid now
               const validMoves = gameRef.current.moves({verbose: true});
               const isValidPremove = validMoves.some(m => m.from === premove.from && m.to === premove.to);
 
@@ -372,22 +381,21 @@ export const useChessGame = () => {
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
+  }, [turn, boardOrientation, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
     if (gameOver || promotionMove) return;
 
     const g = gameRef.current;
     
-    // Premove logic
-    if (g.turn() !== 'w' && gameMode === 'ai') {
+    if (g.turn() !== boardOrientation && gameMode === 'ai') {
       if (enablePremove) {
           if (selectedSquare) {
               setPremove({ from: selectedSquare, to: square });
               resetMoveSelection();
           } else {
               const piece = g.get(square);
-              if (piece && piece.color === 'w') {
+              if (piece && piece.color === boardOrientation) {
                   setSelectedSquare(square);
               }
           }
@@ -395,7 +403,6 @@ export const useChessGame = () => {
       return;
     }
 
-    // Regular move logic
     if (selectedSquare) {
       attemptMove({ from: selectedSquare, to: square });
     } else {
@@ -405,7 +412,7 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, gameOver, gameMode, turn, enablePremove, promotionMove, attemptMove]);
+  }, [selectedSquare, gameOver, gameMode, turn, enablePremove, promotionMove, attemptMove, boardOrientation]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -416,14 +423,14 @@ export const useChessGame = () => {
     if (gameRef.current.history().length === 0) return;
     
     gameRef.current.undo();
-    if (gameMode === 'ai' && gameRef.current.history().length > 0 && gameRef.current.turn() === 'b') {
+    if (gameMode === 'ai' && gameRef.current.history().length > 0 && gameRef.current.turn() !== boardOrientation) {
       gameRef.current.undo();
     }
     updateGameState();
     setHint(null);
     setPremove(null);
     resetMoveSelection();
-  }, [updateGameState, gameMode]);
+  }, [updateGameState, gameMode, boardOrientation]);
 
   const redoMove = useCallback(() => {
     toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
@@ -431,14 +438,14 @@ export const useChessGame = () => {
   
   useEffect(() => {
     resetGame();
-  }, [timeControl, gameMode, resetGame]);
+  }, [gameMode, resetGame]); // Only reset on game mode change, not time control
   
   useEffect(() => {
     updateGameState();
   }, [updateGameState]);
 
   useEffect(() => {
-    if (!timerOn || gameOver || timeControl === 'unlimited') {
+    if (!timerOn || gameOver || timeControl.type === 'unlimited') {
       return;
     }
 
@@ -458,7 +465,7 @@ export const useChessGame = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, timeControl]);
+  }, [timerOn, gameOver, timeControl.type]);
 
 
   const getHint = useCallback(async () => {

@@ -8,7 +8,11 @@ export type PlayerColor = 'w' | 'b';
 export type PieceSet = 'classic' | 'alpha' | 'merida' | 'neo';
 export type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal' | 'marble' | 'walnut' | 'custom';
 export type GameMode = 'ai' | 'two-player';
-export type TimeControl = string;
+export type TimeControl = {
+  type: 'fischer' | 'bronstein' | 'delay' | 'unlimited';
+  initial: number; // seconds
+  increment: number; // seconds
+};
 export type CoordinatesDisplay = 'inside' | 'outside' | 'none';
 export type AutoPromote = 'q' | 'r' | 'b' | 'n' | 'ask';
 export type DirectMessagePrivacy = 'everyone' | 'friends' | 'nobody';

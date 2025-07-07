@@ -3,7 +3,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Chess, type PGN } from 'chess.js';
+import { Chess } from 'chess.js';
+import type { PGN } from 'chess.js';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
@@ -52,7 +53,7 @@ function AnalysisPageComponent() {
   const [game, setGame] = useState(new Chess());
   const [board, setBoard] = useState<any[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
-  const [pgnHeaders, setPgnHeaders] = useState<PGN['headers'] | null>(null);
+  const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string} | null>(null);
 
 
   const updateBoardAtMove = useCallback((index: number) => {
@@ -82,26 +83,24 @@ function AnalysisPageComponent() {
       return;
     }
 
+    setIsLoading(true);
+    setAnalysis(null);
+
     try {
       const chess = new Chess();
-      // The `loadPgn` method in chess.js v1 throws an error on invalid PGN.
-      // We wrap this in a try...catch to handle validation.
       chess.loadPgn(cleanedPgn, { sloppy: true });
 
       if (chess.history().length === 0) {
-        // If loading succeeds but there are no moves, it's likely just a FEN or incomplete PGN.
         const isFen = /^\s*([rnbqkp1-8]+\/){7}([rnbqkp1-8]+)\s[bw]\s(-|K?Q?k?q?)\s(-|[a-h][36])\s\d+\s\d+\s*$/.test(cleanedPgn);
         if (isFen) {
           throw new Error("A FEN position was provided. Full game analysis requires a PGN with moves.");
         }
-        throw new Error("Invalid or incomplete PGN provided. Please check the game data and try again.");
+        throw new Error("Invalid or incomplete PGN. Please check the game data and try again.");
       }
-
-      // If validation is successful, we can proceed.
-      setIsLoading(true);
-      setAnalysis(null);
       
-      setPgnHeaders(chess.header());
+      const headers = chess.header();
+      setPgnHeaders(headers);
+      
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
 
@@ -110,7 +109,9 @@ function AnalysisPageComponent() {
       updateBoardAtMove(finalGame.history().length - 1);
 
     } catch (e: any) {
-      const errorMessage = e.message || 'An unknown error occurred.';
+      const errorMessage = e.message?.includes('Invalid PGN') 
+          ? 'Invalid PGN provided. Please paste the full PGN of a game.'
+          : e.message || 'An unknown error occurred during analysis.';
       toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
     } finally {
       setIsLoading(false);
@@ -144,8 +145,8 @@ function AnalysisPageComponent() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 text-center h-64">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <h2 className="text-xl font-semibold">Analyzing your game...</h2>
-        <p className="text-muted-foreground">This may take a moment. The AI is reviewing every move.</p>
+        <h2 className="text-xl font-semibold">Evaluating your game...</h2>
+        <p className="text-muted-foreground">Charting the peaks and valleys of every move.</p>
       </div>
     );
   }
@@ -160,25 +161,25 @@ function AnalysisPageComponent() {
                         <div className="flex items-center gap-2">
                            <Avatar>
                                 <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="avatar abstract" />
-                                <AvatarFallback>{pgnHeaders.get('White')?.charAt(0) || 'W'}</AvatarFallback>
+                                <AvatarFallback>{pgnHeaders['White']?.charAt(0) || 'W'}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="font-semibold">{pgnHeaders.get('White') || 'White'}</p>
-                                <p className="text-sm text-muted-foreground">ELO: {pgnHeaders.get('WhiteElo') || 'N/A'}</p>
+                                <p className="font-semibold">{pgnHeaders['White'] || 'White'}</p>
+                                <p className="text-sm text-muted-foreground">ELO: {pgnHeaders['WhiteElo'] || 'N/A'}</p>
                             </div>
                         </div>
                         <div className="text-center">
-                            <h3 className="font-bold text-lg">{pgnHeaders.get('Result')}</h3>
-                            <p className="text-sm text-muted-foreground">{pgnHeaders.get('Site') || 'Online'}</p>
+                            <h3 className="font-bold text-lg">{pgnHeaders['Result']}</h3>
+                            <p className="text-sm text-muted-foreground">{pgnHeaders['Site'] || 'Online'}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="text-right">
-                                <p className="font-semibold">{pgnHeaders.get('Black') || 'Black'}</p>
-                                <p className="text-sm text-muted-foreground">ELO: {pgnHeaders.get('BlackElo') || 'N/A'}</p>
+                                <p className="font-semibold">{pgnHeaders['Black'] || 'Black'}</p>
+                                <p className="text-sm text-muted-foreground">ELO: {pgnHeaders['BlackElo'] || 'N/A'}</p>
                             </div>
                             <Avatar>
                                 <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="avatar robot" />
-                                <AvatarFallback>{pgnHeaders.get('Black')?.charAt(0) || 'B'}</AvatarFallback>
+                                <AvatarFallback>{pgnHeaders['Black']?.charAt(0) || 'B'}</AvatarFallback>
                             </Avatar>
                         </div>
                     </CardContent>
