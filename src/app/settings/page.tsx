@@ -2,20 +2,44 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Palette, Gamepad2 } from 'lucide-react';
+import { UserCircle, Palette, Gamepad2, Laptop, Users, Bell, LifeBuoy, Shield, Gem } from 'lucide-react';
 import { ProfileSettings } from '@/components/settings/profile-settings';
-import { AppearanceSettings } from '@/components/settings/appearance-settings';
+import { BoardPiecesSettings } from '@/components/settings/board-pieces-settings';
 import { GameplaySettings } from '@/components/settings/gameplay-settings';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+
+const ComingSoon = ({ title }: { title: string }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>Customize your {title.toLowerCase()} settings.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="flex items-center justify-center h-48 bg-muted/50 rounded-md">
+                <p className="text-muted-foreground">This section is coming soon!</p>
+            </div>
+        </CardContent>
+    </Card>
+);
+
 
 // --- Main Settings Page Component ---
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('board-pieces');
 
   const navItems = [
-    { id: 'profile', label: 'Profile', icon: UserCircle },
-    { id: 'appearance', label: 'Appearance', icon: Palette },
-    { id: 'gameplay', label: 'Gameplay', icon: Gamepad2 },
+    { id: 'profile', label: 'Profile', icon: UserCircle, component: <ProfileSettings /> },
+    { id: 'board-pieces', label: 'Board & Pieces', icon: Palette, component: <BoardPiecesSettings /> },
+    { id: 'gameplay', label: 'Gameplay', icon: Gamepad2, component: <GameplaySettings /> },
+    { id: 'social', label: 'Social', icon: Users, component: <ComingSoon title="Social" /> },
+    { id: 'coach', label: 'Coach', icon: LifeBuoy, component: <ComingSoon title="Coach" /> },
+    { id: 'notifications', label: 'Notifications', icon: Bell, component: <ComingSoon title="Notifications" /> },
+    { id: 'account', label: 'Account', icon: Shield, component: <ComingSoon title="Account" /> },
+    { id: 'membership', label: 'Membership', icon: Gem, component: <ComingSoon title="Membership" /> },
   ];
+  
+  const activeComponent = navItems.find(item => item.id === activeTab)?.component;
 
   return (
     <div className="flex flex-col md:flex-row gap-8">
@@ -36,9 +60,7 @@ export default function SettingsPage() {
         </nav>
       </aside>
       <main className="flex-1">
-          {activeTab === 'profile' && <ProfileSettings />}
-          {activeTab === 'appearance' && <AppearanceSettings />}
-          {activeTab === 'gameplay' && <GameplaySettings />}
+          {activeComponent}
       </main>
     </div>
   );

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -50,6 +49,14 @@ export const useChessGame = () => {
   const gameRef = useRef(new Chess());
   const { toast } = useToast();
   
+  // Sound refs
+  // NOTE: For sounds to work, you must place corresponding .mp3 files
+  // in the /public/sounds/ directory. E.g., /public/sounds/move-self.mp3
+  const moveSoundRef = useRef<HTMLAudioElement | null>(null);
+  const captureSoundRef = useRef<HTMLAudioElement | null>(null);
+  const checkSoundRef = useRef<HTMLAudioElement | null>(null);
+  const gameOverSoundRef = useRef<HTMLAudioElement | null>(null);
+
   // Game State
   const [board, setBoard] = useState<BoardState>([]);
   const [history, setHistory] = useState<readonly ChessMove[]>([]);
@@ -73,7 +80,7 @@ export const useChessGame = () => {
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
   const [promotionMove, setPromotionMove] = useState<{ from: ChessSquare; to: ChessSquare } | null>(null);
 
-  // UI Settings state (initialized with safe defaults for SSR)
+  // UI Settings state
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
   const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
@@ -84,19 +91,46 @@ export const useChessGame = () => {
   const [enablePremove, setEnablePremove] = useState<boolean>(true);
   const [autoPromoteTo, setAutoPromoteTo] = useState<AutoPromote>('q');
   const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
+  const [enableSounds, setEnableSounds] = useState<boolean>(true);
 
   // Effect to load settings from localStorage on client-side after hydration
   useEffect(() => {
-    setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
-    setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
-    setShowPossibleMoves(getSetting<boolean>('chess:showPossibleMoves', true));
-    setShowLastMoveHighlight(getSetting<boolean>('chess:showLastMoveHighlight', true));
-    setCustomColors(getSetting<CustomColors>('chess:customColors', defaultCustomColors));
-    setShowCoordinates(getSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'));
-    setEnablePremove(getSetting<boolean>('chess:enablePremove', true));
-    setAutoPromoteTo(getSetting<AutoPromote>('chess:autoPromoteTo', 'q'));
-    setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
+    const loadSettings = () => {
+      setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
+      setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
+      setShowPossibleMoves(getSetting<boolean>('chess:showPossibleMoves', true));
+      setShowLastMoveHighlight(getSetting<boolean>('chess:showLastMoveHighlight', true));
+      setCustomColors(getSetting<CustomColors>('chess:customColors', defaultCustomColors));
+      setShowCoordinates(getSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'));
+      setEnablePremove(getSetting<boolean>('chess:enablePremove', true));
+      setAutoPromoteTo(getSetting<AutoPromote>('chess:autoPromoteTo', 'q'));
+      setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
+      setEnableSounds(getSetting<boolean>('chess:enableSounds', true));
+    };
+
+    loadSettings();
+
+    // Initialize Audio objects on the client
+    moveSoundRef.current = new Audio('/sounds/move-self.mp3');
+    captureSoundRef.current = new Audio('/sounds/capture.mp3');
+    checkSoundRef.current = new Audio('/sounds/check.mp3');
+    gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
+
+    window.addEventListener('storage', loadSettings);
+    return () => window.removeEventListener('storage', loadSettings);
   }, []);
+
+  const playSound = useCallback((sound: 'move' | 'capture' | 'check' | 'gameOver') => {
+      if (!enableSounds) return;
+      let audio;
+      switch(sound) {
+        case 'move': audio = moveSoundRef.current; break;
+        case 'capture': audio = captureSoundRef.current; break;
+        case 'check': audio = checkSoundRef.current; break;
+        case 'gameOver': audio = gameOverSoundRef.current; break;
+      }
+      audio?.play().catch(e => console.error(`Error playing ${sound} sound:`, e));
+  }, [enableSounds]);
 
   const updateGameState = useCallback(() => {
     const g = gameRef.current;
@@ -156,6 +190,7 @@ export const useChessGame = () => {
     setMaterialAdvantage(whiteMaterialOnBoard - blackMaterialOnBoard);
 
     if (g.isGameOver()) {
+      playSound('gameOver');
       setTimerOn(false);
       let status = 'Game Over';
       let winner = '';
@@ -179,7 +214,8 @@ export const useChessGame = () => {
     }
     
     setPgn(g.pgn());
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playSound]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
     try {
@@ -187,6 +223,10 @@ export const useChessGame = () => {
       const prevTurn = g.turn();
       const result = g.move(move);
       if (result) {
+        if (result.flags.includes('c')) playSound('capture');
+        else playSound('move');
+        if (g.isCheck()) playSound('check');
+
         if (timeControl !== 'unlimited') {
             const { increment } = parseTimeControl(timeControl);
             setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + increment }));
@@ -200,7 +240,7 @@ export const useChessGame = () => {
       return false;
     }
     return false;
-  }, [timeControl, timerOn, updateGameState]);
+  }, [timeControl, timerOn, updateGameState, playSound]);
 
   const resetMoveSelection = () => {
     setSelectedSquare(null);
@@ -210,7 +250,8 @@ export const useChessGame = () => {
   const attemptMove = useCallback((move: { from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' }) => {
       const gameCopy = new Chess(gameRef.current.fen());
       const possibleMovesList = gameCopy.moves({ square: move.from, verbose: true });
-      const isPromotion = possibleMovesList.some(m => m.to === move.to && m.flags.includes('p'));
+      const moveDetails = possibleMovesList.find(m => m.to === move.to);
+      const isPromotion = moveDetails?.flags.includes('p');
 
       if (isPromotion && autoPromoteTo === 'ask') {
           setPromotionMove({ from: move.from, to: move.to });
@@ -218,7 +259,7 @@ export const useChessGame = () => {
           return;
       }
 
-      const moveWithPromotion = { ...move, promotion: move.promotion || (autoPromoteTo !== 'ask' ? autoPromoteTo : 'q') };
+      const moveWithPromotion = { ...move, promotion: move.promotion || (isPromotion ? (autoPromoteTo !== 'ask' ? autoPromoteTo : 'q') : undefined) };
       const gameCopyForSan = new Chess(gameRef.current.fen());
       const moveResult = gameCopyForSan.move(moveWithPromotion);
 
@@ -260,18 +301,20 @@ export const useChessGame = () => {
   }, [promotionMove, makeMove, confirmMoveEnabled]);
 
   const handlePieceDrop = useCallback((from: ChessSquare, to: ChessSquare) => {
-    if (isAITurn) {
+    const g = gameRef.current;
+    if (gameOver) return;
+
+    // If it's not the player's turn, treat it as a premove
+    if (g.turn() !== 'w' && gameMode === 'ai') {
       if (enablePremove) {
         setPremove({ from, to });
         resetMoveSelection();
       }
       return;
     }
-
-    if(gameOver) return;
     
-    attemptMove({ from, to, promotion: 'q' }); // 'q' is default, attemptMove will handle 'ask' logic
-  }, [isAITurn, enablePremove, gameOver, attemptMove]);
+    attemptMove({ from, to });
+  }, [gameOver, gameMode, enablePremove, attemptMove]);
 
   const resetGame = useCallback(() => {
     const g = new Chess();
@@ -305,9 +348,12 @@ export const useChessGame = () => {
           makeMove(suggestedMove);
           
           if (premove) {
-              const premoveResult = gameRef.current.move(premove);
-              if (premoveResult) {
-                  updateGameState();
+              // check if premove is valid now
+              const validMoves = gameRef.current.moves({verbose: true});
+              const isValidPremove = validMoves.some(m => m.from === premove.from && m.to === premove.to);
+
+              if (isValidPremove) {
+                  makeMove(premove);
               }
               setPremove(null);
           }
@@ -326,14 +372,15 @@ export const useChessGame = () => {
       const timeoutId = setTimeout(performAIMove, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove, updateGameState]);
+  }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
     if (gameOver || promotionMove) return;
 
     const g = gameRef.current;
     
-    if (isAITurn) {
+    // Premove logic
+    if (g.turn() !== 'w' && gameMode === 'ai') {
       if (enablePremove) {
           if (selectedSquare) {
               setPremove({ from: selectedSquare, to: square });
@@ -348,8 +395,9 @@ export const useChessGame = () => {
       return;
     }
 
+    // Regular move logic
     if (selectedSquare) {
-      attemptMove({ from: selectedSquare, to: square, promotion: 'q' }); // 'q' is default, attemptMove handles 'ask'
+      attemptMove({ from: selectedSquare, to: square });
     } else {
       const piece = g.get(square);
       if (piece && piece.color === g.turn()) {
@@ -357,7 +405,7 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, gameOver, isAITurn, turn, enablePremove, promotionMove, attemptMove]);
+  }, [selectedSquare, gameOver, gameMode, turn, enablePremove, promotionMove, attemptMove]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -368,7 +416,7 @@ export const useChessGame = () => {
     if (gameRef.current.history().length === 0) return;
     
     gameRef.current.undo();
-    if (gameMode === 'ai' && gameRef.current.history().length > 0) {
+    if (gameMode === 'ai' && gameRef.current.history().length > 0 && gameRef.current.turn() === 'b') {
       gameRef.current.undo();
     }
     updateGameState();
@@ -380,33 +428,7 @@ export const useChessGame = () => {
   const redoMove = useCallback(() => {
     toast({ title: "Coming Soon!", description: "Redo functionality is under development." });
   }, [toast]);
-
-  // Settings synchronization
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-        const updateState = (key: string, setter: (value: any) => void) => {
-            if (e.key === key && e.newValue) {
-                try {
-                    setter(JSON.parse(e.newValue));
-                } catch {
-                    setter(e.newValue);
-                }
-            }
-        };
-        updateState('chess:boardTheme', setBoardTheme);
-        updateState('chess:pieceSet', setPieceSet);
-        updateState('chess:customColors', setCustomColors);
-        updateState('chess:showCoordinates', setShowCoordinates);
-        updateState('chess:showPossibleMoves', setShowPossibleMoves);
-        updateState('chess:showLastMoveHighlight', setShowLastMoveHighlight);
-        updateState('chess:enablePremove', setEnablePremove);
-        updateState('chess:autoPromoteTo', setAutoPromoteTo);
-        updateState('chess:confirmMove', setConfirmMoveEnabled);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
+  
   useEffect(() => {
     resetGame();
   }, [timeControl, gameMode, resetGame]);

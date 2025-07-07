@@ -15,11 +15,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { PieceSet, BoardTheme, CustomColors, CoordinatesDisplay } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Palette, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { ChessPieceDisplay } from '@/components/chess-piece';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 
 // --- Helper functions ---
 const getJsonSetting = <T,>(key: string, defaultValue: T): T => {
@@ -72,8 +73,8 @@ const boardThemes = [
 const pieceSets = ['classic', 'alpha', 'merida', 'neo'] as const;
 
 
-// --- Appearance Settings Component ---
-export function AppearanceSettings() {
+// --- Board & Pieces Settings Component ---
+export function BoardPiecesSettings() {
     const { toast } = useToast();
     
     const [settings, setSettings] = useState({
@@ -120,7 +121,7 @@ export function AppearanceSettings() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle>Appearance</CardTitle>
+            <CardTitle>Board &amp; Pieces</CardTitle>
             <CardDescription>Customize the look and feel of your chessboard and pieces.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -143,19 +144,20 @@ export function AppearanceSettings() {
                             ))}
                             {boardThemes.map(theme => (
                                 <Label key={theme.value} htmlFor={`theme-${theme.value}`} className="cursor-pointer">
-                                    <div className={cn("rounded-md border-2 aspect-square flex items-center justify-center", settings.boardTheme === theme.value ? 'border-primary' : 'border-transparent')}>
-                                    {theme.value !== 'custom' ? (
-                                        <div className="w-12 h-12 rounded-sm overflow-hidden grid grid-cols-2 grid-rows-2">
-                                            <div style={{ backgroundColor: theme.colors.light }}></div>
-                                            <div style={{ backgroundColor: theme.colors.dark }}></div>
-                                            <div style={{ backgroundColor: theme.colors.dark }}></div>
-                                            <div style={{ backgroundColor: theme.colors.light }}></div>
+                                    <div className={cn("rounded-md border-2 p-1 aspect-square flex items-center justify-center", settings.boardTheme === theme.value ? 'border-primary' : 'border-transparent')}>
+                                        <div className="w-full h-full rounded-sm overflow-hidden grid grid-cols-2 grid-rows-2">
+                                            {theme.value !== 'custom' ? (
+                                                <>
+                                                    <div style={{ backgroundColor: theme.colors.light }}></div>
+                                                    <div style={{ backgroundColor: theme.colors.dark }}></div>
+                                                    <div style={{ backgroundColor: theme.colors.dark }}></div>
+                                                    <div style={{ backgroundColor: theme.colors.light }}></div>
+                                                </>
+                                            ) : (
+                                                <div className="col-span-2 row-span-2 rounded-sm bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                                                </div>
+                                            )}
                                         </div>
-                                    ) : (
-                                         <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
-                                            <Palette className="w-6 h-6 text-white"/>
-                                         </div>
-                                    )}
                                     </div>
                                     <p className="text-center text-sm mt-1">{theme.name}</p>
                                 </Label>
@@ -174,30 +176,8 @@ export function AppearanceSettings() {
                             </div>
                         </div>
                     )}
-                    
-                     <div className="space-y-2">
-                        <Label>Coordinates</Label>
-                        <RadioGroup 
-                            value={settings.showCoordinates} 
-                            onValueChange={(value) => setSettings(s => ({ ...s, showCoordinates: value as CoordinatesDisplay }))}
-                            className="flex items-center gap-4"
-                        >
-                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="outside" id="coord-outside" />
-                                <Label htmlFor="coord-outside">Outside</Label>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="inside" id="coord-inside" />
-                                <Label htmlFor="coord-inside">Inside</Label>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="none" id="coord-none" />
-                                <Label htmlFor="coord-none">None</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-
                 </TabsContent>
+
                 <TabsContent value="pieces" className="pt-6 space-y-6">
                     <div className="space-y-4">
                         <Label>Piece Set</Label>
@@ -245,6 +225,7 @@ export function AppearanceSettings() {
                         </div>
                     </div>
                 </TabsContent>
+
                 <TabsContent value="indicators" className="pt-6 space-y-6">
                     <div className="space-y-4 rounded-md border p-4 max-w-sm">
                         <div className="flex items-center justify-between">
@@ -263,6 +244,29 @@ export function AppearanceSettings() {
                             <Switch id="highlight-last-move" checked={settings.showLastMoveHighlight} onCheckedChange={(c) => setSettings(s => ({...s, showLastMoveHighlight: c}))} />
                         </div>
                     </div>
+
+                    <div className="space-y-2">
+                        <Label>Coordinates</Label>
+                        <RadioGroup 
+                            value={settings.showCoordinates} 
+                            onValueChange={(value) => setSettings(s => ({ ...s, showCoordinates: value as CoordinatesDisplay }))}
+                            className="flex items-center gap-4"
+                        >
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="outside" id="coord-outside" />
+                                <Label htmlFor="coord-outside">Outside</Label>
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="inside" id="coord-inside" />
+                                <Label htmlFor="coord-inside">Inside</Label>
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="none" id="coord-none" />
+                                <Label htmlFor="coord-none">None</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
                      <div className="space-y-4 rounded-md border border-border p-4">
                         <Label className="text-base font-medium">Custom Highlight Colors</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -14,7 +13,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronsRight, Check } from 'lucide-react';
+import { ChevronsRight, Check, Volume2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { AutoPromote } from '@/lib/types';
@@ -47,6 +46,7 @@ export function GameplaySettings() {
     autoPromoteTo: 'q' as AutoPromote,
     enablePremove: true,
     confirmMove: false,
+    enableSounds: true,
   });
   const [initialState, setInitialState] = useState(settings);
 
@@ -55,6 +55,7 @@ export function GameplaySettings() {
         autoPromoteTo: getJsonSetting<AutoPromote>('chess:autoPromoteTo', 'q'),
         enablePremove: getJsonSetting<boolean>('chess:enablePremove', true),
         confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
+        enableSounds: getJsonSetting<boolean>('chess:enableSounds', true),
       };
       setSettings(loadedSettings);
       setInitialState(loadedSettings);
@@ -99,6 +100,13 @@ export function GameplaySettings() {
                          <span className="text-xs text-muted-foreground font-normal">Show a confirmation dialog for every move.</span>
                     </Label>
                     <Switch id="confirm-move" checked={settings.confirmMove} onCheckedChange={(c) => setSettings(s => ({...s, confirmMove: c}))} />
+                </div>
+                 <Separator />
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="enable-sounds" className="flex flex-col items-start gap-1">
+                        <span className="flex items-center gap-2"><Volume2 className="h-4 w-4" /> Play sound for moves</span>
+                    </Label>
+                    <Switch id="enable-sounds" checked={settings.enableSounds} onCheckedChange={(c) => setSettings(s => ({...s, enableSounds: c}))} />
                 </div>
             </div>
 

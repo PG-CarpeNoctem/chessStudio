@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ChessPieceDisplay } from './chess-piece';
@@ -10,11 +9,8 @@ import React from 'react';
 type ChessBoardProps = Pick<ReturnType<typeof useChessGame>, 
   'board' | 'onSquareClick' | 'onSquareRightClick' | 'selectedSquare' | 'possibleMoves' | 'lastMove' | 'kingInCheck' |
   'boardTheme' | 'showPossibleMoves' | 'showLastMoveHighlight' | 'boardOrientation' | 'pieceSet' |
-  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' | 'showCoordinates'
-> & {
-    isAITurn?: boolean;
-    turn?: 'w' | 'b';
-};
+  'hint' | 'customColors' | 'premove' | 'handlePieceDrop' | 'showCoordinates' | 'turn' | 'gameOver'
+>;
 
 
 export function ChessBoard({
@@ -34,8 +30,8 @@ export function ChessBoard({
   customColors,
   premove,
   handlePieceDrop,
-  isAITurn,
   turn,
+  gameOver,
   showCoordinates,
 }: ChessBoardProps) {
   const ranks = boardOrientation === 'w' ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
@@ -102,7 +98,8 @@ export function ChessBoard({
             const pieceOnSquare = board.find(p => p.square === square);
             const isPossibleMove = possibleMoves.some(m => m.to === square);
             
-            const isDraggable = !isAITurn && pieceOnSquare && pieceOnSquare.piece.color === turn;
+            // Player is always white. Allow dragging own pieces anytime for premoves, unless game is over.
+            const isDraggable = !gameOver && pieceOnSquare?.piece.color === 'w';
 
             return (
               <div
