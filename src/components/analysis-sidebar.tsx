@@ -40,16 +40,19 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, time, subtitle, elo }
     <CardContent className="p-3">
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={avatarSrc || undefined} alt={name} />
-            <AvatarFallback>{isOpponent ? <Bot className="h-5 w-5" /> : name.charAt(0)}</AvatarFallback>
+            <AvatarFallback>{isOpponent ? <Bot className="h-5 w-5" /> : name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="font-semibold">{name} {elo && `(${elo})`}</span>
-            {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">{name}</p>
+            <div className="flex items-baseline gap-2 text-sm text-muted-foreground">
+              {elo && <span>({elo})</span>}
+              {subtitle && <span className="text-xs">{subtitle}</span>}
+            </div>
           </div>
         </div>
-        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-4 py-1.5 flex-shrink-0">
+        <div className="bg-background/20 text-foreground font-mono text-lg rounded-md px-3 py-1.5 flex-shrink-0">
           {time}
         </div>
       </div>
