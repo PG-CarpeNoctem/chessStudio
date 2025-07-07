@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -70,7 +71,7 @@ const boardThemes = [
     { name: 'Custom', value: 'custom' },
 ] as const;
 
-const pieceSets = ['classic', 'alpha', 'merida', 'neo'] as const;
+const pieceSets = ['classic', 'alpha', 'merida', 'neo', 'cburnett', 'fantasy', 'staunty'] as const;
 
 
 // --- Board & Pieces Settings Component ---
