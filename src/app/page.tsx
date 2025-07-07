@@ -5,7 +5,7 @@ import { ChessBoard } from '@/components/chess-board';
 import { GameSidebar } from '@/components/game-sidebar';
 import { AnalysisSidebar } from '@/components/analysis-sidebar';
 import { useChessGame } from '@/hooks/use-chess-game';
-import { Loader2, Menu, Crown, Clock, ShieldQuestion } from 'lucide-react';
+import { Loader2, Menu, Crown, Clock, ShieldQuestion, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -21,6 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { ChessPieceDisplay } from '@/components/chess-piece';
 
 export default function Home() {
   const game = useChessGame();
@@ -121,7 +128,7 @@ export default function Home() {
             </AlertDialogContent>
         </AlertDialog>
 
-        <AlertDialog open={!!game.pendingMove} onOpenChange={(open!) => !open && game.cancelMove()}>
+        <AlertDialog open={!!game.pendingMove} onOpenChange={(open) => !open && game.cancelMove()}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
@@ -140,6 +147,21 @@ export default function Home() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={!!game.promotionMove} onOpenChange={(open) => !open && game.cancelPromotion()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Promote Pawn</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-around p-4">
+                    {(['q', 'r', 'b', 'n'] as const).map((p) => (
+                        <div key={p} className="w-16 h-16 cursor-pointer hover:bg-muted rounded-md p-2" onClick={() => game.handlePromotion(p)}>
+                            <ChessPieceDisplay piece={{type: p, color: game.turn}} pieceSet={game.pieceSet} />
+                        </div>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
 
       </main>
       <AnalysisSidebar {...game} className="hidden md:flex" />

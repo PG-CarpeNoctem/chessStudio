@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Chess } from 'chess.js';
-import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay } from '@/lib/types';
+import type { ChessSquare, ChessPiece, ChessMove, PlayerColor, PieceSet, GameMode, TimeControl, BoardTheme, CustomColors, CoordinatesDisplay, AutoPromote } from '@/lib/types';
 import { suggestMove } from '@/ai/flows/suggest-move';
 import { useToast } from './use-toast';
 
@@ -71,8 +71,9 @@ export const useChessGame = () => {
   const [materialAdvantage, setMaterialAdvantage] = useState<number>(0);
   const [premove, setPremove] = useState<{ from: ChessSquare, to: ChessSquare } | null>(null);
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
+  const [promotionMove, setPromotionMove] = useState<{ from: ChessSquare; to: ChessSquare } | null>(null);
 
-  // UI Settings from localStorage
+  // UI Settings state (initialized with safe defaults for SSR)
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
   const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
@@ -81,10 +82,10 @@ export const useChessGame = () => {
   const [customColors, setCustomColors] = useState<CustomColors>(defaultCustomColors);
   const [showCoordinates, setShowCoordinates] = useState<CoordinatesDisplay>('outside');
   const [enablePremove, setEnablePremove] = useState<boolean>(true);
-  const [autoPromoteTo, setAutoPromoteTo] = useState<'q' | 'r' | 'b' | 'n'>('q');
+  const [autoPromoteTo, setAutoPromoteTo] = useState<AutoPromote>('q');
   const [confirmMoveEnabled, setConfirmMoveEnabled] = useState<boolean>(false);
 
-  // Effect to load settings from localStorage on client-side mount
+  // Effect to load settings from localStorage on client-side after hydration
   useEffect(() => {
     setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'cyan'));
     setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'classic'));
@@ -93,7 +94,7 @@ export const useChessGame = () => {
     setCustomColors(getSetting<CustomColors>('chess:customColors', defaultCustomColors));
     setShowCoordinates(getSetting<CoordinatesDisplay>('chess:showCoordinates', 'outside'));
     setEnablePremove(getSetting<boolean>('chess:enablePremove', true));
-    setAutoPromoteTo(getSetting<'q' | 'r' | 'b' | 'n'>('chess:autoPromoteTo', 'q'));
+    setAutoPromoteTo(getSetting<AutoPromote>('chess:autoPromoteTo', 'q'));
     setConfirmMoveEnabled(getSetting<boolean>('chess:confirmMove', false));
   }, []);
 
@@ -208,15 +209,26 @@ export const useChessGame = () => {
 
   const attemptMove = useCallback((move: { from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' }) => {
       const gameCopy = new Chess(gameRef.current.fen());
-      const moveResult = gameCopy.move(move);
+      const possibleMovesList = gameCopy.moves({ square: move.from, verbose: true });
+      const isPromotion = possibleMovesList.some(m => m.to === move.to && m.flags.includes('p'));
+
+      if (isPromotion && autoPromoteTo === 'ask') {
+          setPromotionMove({ from: move.from, to: move.to });
+          resetMoveSelection();
+          return;
+      }
+
+      const moveWithPromotion = { ...move, promotion: move.promotion || (autoPromoteTo !== 'ask' ? autoPromoteTo : 'q') };
+      const gameCopyForSan = new Chess(gameRef.current.fen());
+      const moveResult = gameCopyForSan.move(moveWithPromotion);
 
       if (moveResult && confirmMoveEnabled) {
-          setPendingMove({ ...move, san: moveResult.san });
+          setPendingMove({ ...moveWithPromotion, san: moveResult.san });
       } else if (moveResult) {
-          makeMove(move);
+          makeMove(moveWithPromotion);
       }
       resetMoveSelection();
-  }, [confirmMoveEnabled, makeMove]);
+  }, [confirmMoveEnabled, makeMove, autoPromoteTo]);
 
   const confirmMove = useCallback(() => {
     if (pendingMove) {
@@ -229,6 +241,23 @@ export const useChessGame = () => {
       setPendingMove(null);
   }, []);
 
+  const cancelPromotion = useCallback(() => {
+    setPromotionMove(null);
+  }, []);
+
+  const handlePromotion = useCallback((piece: 'q' | 'r' | 'b' | 'n') => {
+      if (promotionMove) {
+          const move = { ...promotionMove, promotion: piece };
+          if (confirmMoveEnabled) {
+              const gameCopyForSan = new Chess(gameRef.current.fen());
+              const moveResult = gameCopyForSan.move(move);
+              if (moveResult) setPendingMove({ ...move, san: moveResult.san });
+          } else {
+              makeMove(move);
+          }
+      }
+      setPromotionMove(null);
+  }, [promotionMove, makeMove, confirmMoveEnabled]);
 
   const handlePieceDrop = useCallback((from: ChessSquare, to: ChessSquare) => {
     if (isAITurn) {
@@ -241,8 +270,8 @@ export const useChessGame = () => {
 
     if(gameOver) return;
     
-    attemptMove({ from, to, promotion: autoPromoteTo });
-  }, [isAITurn, enablePremove, gameOver, autoPromoteTo, attemptMove]);
+    attemptMove({ from, to, promotion: 'q' }); // 'q' is default, attemptMove will handle 'ask' logic
+  }, [isAITurn, enablePremove, gameOver, attemptMove]);
 
   const resetGame = useCallback(() => {
     const g = new Chess();
@@ -259,6 +288,7 @@ export const useChessGame = () => {
     setHint(null);
     setPremove(null);
     setPendingMove(null);
+    setPromotionMove(null);
     setTime({ w: initialTime, b: initialTime });
     setTimerOn(false);
   }, [updateGameState, timeControl, gameMode]);
@@ -299,7 +329,7 @@ export const useChessGame = () => {
   }, [turn, gameMode, skillLevel, makeMove, toast, pgn, gameOver, premove, updateGameState]);
 
   const onSquareClick = useCallback((square: ChessSquare) => {
-    if (gameOver) return;
+    if (gameOver || promotionMove) return;
 
     const g = gameRef.current;
     
@@ -319,7 +349,7 @@ export const useChessGame = () => {
     }
 
     if (selectedSquare) {
-      attemptMove({ from: selectedSquare, to: square, promotion: autoPromoteTo });
+      attemptMove({ from: selectedSquare, to: square, promotion: 'q' }); // 'q' is default, attemptMove handles 'ask'
     } else {
       const piece = g.get(square);
       if (piece && piece.color === g.turn()) {
@@ -327,7 +357,7 @@ export const useChessGame = () => {
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
     }
-  }, [selectedSquare, gameOver, isAITurn, turn, enablePremove, autoPromoteTo, attemptMove]);
+  }, [selectedSquare, gameOver, isAITurn, turn, enablePremove, promotionMove, attemptMove]);
   
   const onSquareRightClick = useCallback(() => {
     resetMoveSelection();
@@ -464,9 +494,9 @@ export const useChessGame = () => {
   const canRedo = false;
 
   return {
-    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, setBoardTheme, showPossibleMoves, setShowPossibleMoves, showLastMoveHighlight, setShowLastMoveHighlight, boardOrientation, flipBoard, pieceSet, setPieceSet, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
-    customColors, setCustomColors,
-    showCoordinates, setShowCoordinates,
-    handlePieceDrop, pendingMove, confirmMove, cancelMove
+    board, turn, onSquareClick, onSquareRightClick, selectedSquare, possibleMoves, resetGame, history, pgn, isAITurn, lastMove, kingInCheck, gameOver, skillLevel, setSkillLevel, boardTheme, pieceSet, showPossibleMoves, showLastMoveHighlight, boardOrientation, flipBoard, undoMove, redoMove, canUndo, canRedo, gameMode, setGameMode, timeControl, setTimeControl, time, hint, getHint, capturedPieces, materialAdvantage, premove,
+    customColors, showCoordinates, handlePieceDrop, 
+    pendingMove, confirmMove, cancelMove,
+    promotionMove, cancelPromotion, handlePromotion,
   };
 };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -48,8 +49,8 @@ const pronouns = ["He/Him", "She/Her", "They/Them", "Prefer not to say"];
 export function ProfileSettings() {
   const { toast } = useToast();
   
-  const defaultState = {
-    username: 'Player',
+  const [settings, setSettings] = useState({
+    username: '',
     firstName: '',
     lastName: '',
     bio: '',
@@ -59,10 +60,8 @@ export function ProfileSettings() {
     url: '',
     twitterUrl: '',
     twitchUrl: '',
-  };
-  
-  const [settings, setSettings] = useState(defaultState);
-  const [initialState, setInitialState] = useState(defaultState);
+  });
+  const [initialState, setInitialState] = useState(settings);
   const [userEmail, setUserEmail] = useState('');
 
   // Password change state
@@ -71,7 +70,6 @@ export function ProfileSettings() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
-    setUserEmail(localStorage.getItem('email') || 'No email associated');
     const loadedState = {
         username: getSetting('username', 'Player'),
         firstName: getSetting('chess:firstName', ''),
@@ -86,6 +84,7 @@ export function ProfileSettings() {
     };
     setSettings(loadedState);
     setInitialState(loadedState);
+    setUserEmail(getSetting('email', 'No email associated'));
   }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,8 +143,22 @@ export function ProfileSettings() {
             });
             return;
         }
+        
+        let users: any[] = [];
+        try {
+            const storedUsers = localStorage.getItem('pgchess_users');
+            if (storedUsers) {
+                const parsed = JSON.parse(storedUsers);
+                if (Array.isArray(parsed)) {
+                    users = parsed;
+                }
+            }
+        } catch (err) {
+            console.error("Could not parse users from localStorage", err);
+            toast({ variant: 'destructive', title: 'Error', description: 'User data is corrupted. Please try signing out and in again.' });
+            return;
+        }
 
-        const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
         const userIndex = users.findIndex((u: any) => u.email === loggedInEmail);
 
         if (userIndex === -1) {

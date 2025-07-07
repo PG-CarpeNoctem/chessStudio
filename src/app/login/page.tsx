@@ -28,6 +28,27 @@ export default function LoginPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
 
+  const getStoredUsers = () => {
+    try {
+      const storedUsers = localStorage.getItem('pgchess_users');
+      // If there's no data, or it's an empty string, return an empty array.
+      if (!storedUsers) {
+        return [];
+      }
+      const parsedUsers = JSON.parse(storedUsers);
+      // Ensure the parsed data is an array before returning.
+      if (Array.isArray(parsedUsers)) {
+        return parsedUsers;
+      }
+      // If data is valid JSON but not an array, return an empty array.
+      return [];
+    } catch (e) {
+      // If JSON.parse fails, log the error and return an empty array.
+      console.error('Failed to parse users from localStorage', e);
+      return [];
+    }
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) {
@@ -40,7 +61,7 @@ export default function LoginPage() {
     }
 
     try {
-      const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
+      const users = getStoredUsers();
       const user = users.find(
         (u: any) => u.email === loginEmail && u.password === loginPassword
       );
@@ -83,7 +104,7 @@ export default function LoginPage() {
     }
 
     try {
-      const users = JSON.parse(localStorage.getItem('pgchess_users') || '[]');
+      const users = getStoredUsers();
       const existingUser = users.find((u: any) => u.email === signupEmail);
 
       if (existingUser) {

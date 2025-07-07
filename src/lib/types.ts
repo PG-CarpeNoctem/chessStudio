@@ -10,6 +10,7 @@ export type BoardTheme = 'classic' | 'cyan' | 'ocean' | 'forest' | 'charcoal' | 
 export type GameMode = 'ai' | 'two-player';
 export type TimeControl = string;
 export type CoordinatesDisplay = 'inside' | 'outside' | 'none';
+export type AutoPromote = 'q' | 'r' | 'b' | 'n' | 'ask';
 
 export type CustomColors = {
   boardLight: string;

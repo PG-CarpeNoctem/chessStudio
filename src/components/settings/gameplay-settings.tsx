@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -15,15 +16,9 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronsRight, Check } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { AutoPromote } from '@/lib/types';
 
-// --- Helper Functions ---
 const getJsonSetting = <T,>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') {
     return defaultValue;
@@ -45,22 +40,19 @@ const setJsonSetting = (key: string, value: any) => {
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: stringifiedValue }));
 };
 
-// --- Gameplay Settings Component ---
 export function GameplaySettings() {
   const { toast } = useToast();
   
-  const defaultState = {
-    autoPromoteTo: 'q' as 'q' | 'r' | 'b' | 'n',
+  const [settings, setSettings] = useState({
+    autoPromoteTo: 'q' as AutoPromote,
     enablePremove: true,
     confirmMove: false,
-  };
-
-  const [settings, setSettings] = useState(defaultState);
-  const [initialState, setInitialState] = useState(defaultState);
+  });
+  const [initialState, setInitialState] = useState(settings);
 
   useEffect(() => {
       const loadedSettings = {
-        autoPromoteTo: getJsonSetting<'q' | 'r' | 'b' | 'n'>('chess:autoPromoteTo', 'q'),
+        autoPromoteTo: getJsonSetting<AutoPromote>('chess:autoPromoteTo', 'q'),
         enablePremove: getJsonSetting<boolean>('chess:enablePremove', true),
         confirmMove: getJsonSetting<boolean>('chess:confirmMove', false),
       };
@@ -111,19 +103,34 @@ export function GameplaySettings() {
             </div>
 
             <div className="space-y-2 max-w-sm">
-                <Label htmlFor="auto-promote-to">Automatic Pawn Promotion</Label>
-                <Select onValueChange={(value) => setSettings(s => ({...s, autoPromoteTo: value as 'q'}))} value={settings.autoPromoteTo}>
-                    <SelectTrigger id="auto-promote-to">
-                        <SelectValue placeholder="Select piece to promote to" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="q">Queen</SelectItem>
-                        <SelectItem value="r">Rook</SelectItem>
-                        <SelectItem value="b">Bishop</SelectItem>
-                        <SelectItem value="n">Knight</SelectItem>
-                    </SelectContent>
-                </Select>
-                 <p className="text-xs text-muted-foreground">
+                <Label>Automatic Pawn Promotion</Label>
+                <RadioGroup 
+                    value={settings.autoPromoteTo} 
+                    onValueChange={(value) => setSettings(s => ({ ...s, autoPromoteTo: value as AutoPromote }))}
+                    className="flex flex-col gap-2"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="q" id="promo-q" />
+                        <Label htmlFor="promo-q">Queen</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="r" id="promo-r" />
+                        <Label htmlFor="promo-r">Rook</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="b" id="promo-b" />
+                        <Label htmlFor="promo-b">Bishop</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="n" id="promo-n" />
+                        <Label htmlFor="promo-n">Knight</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="ask" id="promo-ask" />
+                        <Label htmlFor="promo-ask">Always Ask</Label>
+                    </div>
+                </RadioGroup>
+                 <p className="text-xs text-muted-foreground pt-2">
                     Pawns will automatically be promoted to this piece.
                 </p>
             </div>
