@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from './ui/input';
 import Link from 'next/link';
 import { Slider } from './ui/slider';
+import { Separator } from './ui/separator';
 
 type GameSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'resetGame' | 'skillLevel' | 'setSkillLevel' | 'flipBoard' | 'undoMove' | 'redoMove' |
@@ -112,7 +113,7 @@ export function GameSidebar({
                         <CardTitle className='text-base'>Game Controls</CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                         <div className="flex flex-col gap-3">
+                         <div className="flex flex-col gap-2">
                             <Button onClick={resetGame}>
                                 <Play />
                                 New Game
@@ -126,6 +127,9 @@ export function GameSidebar({
                                     <Flag />
                                     Resign
                                 </Button>
+                            </div>
+                            <Separator className="bg-sidebar-border/50" />
+                            <div className="grid grid-cols-2 gap-2">
                                 <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
                                     <Undo2 />
                                     Undo
@@ -134,6 +138,9 @@ export function GameSidebar({
                                     <Redo2 />
                                     Redo
                                 </Button>
+                            </div>
+                             <Separator className="bg-sidebar-border/50" />
+                            <div className="grid grid-cols-2 gap-2">
                                 <Button onClick={flipBoard} variant="outline" size="sm">
                                     <RefreshCw />
                                     Flip Board
