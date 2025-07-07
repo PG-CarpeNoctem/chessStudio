@@ -134,7 +134,7 @@ export function ProfileSettings() {
             <div className="space-y-2">
                 <Label>Profile Picture</Label>
                 <Avatar className="h-24 w-24">
-                    <AvatarImage src={settings.avatar || `https://placehold.co/96x96.png`} data-ai-hint="avatar abstract" />
+                    <AvatarImage src={settings.avatar} alt={settings.username} />
                     <AvatarFallback>{settings.username.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
@@ -221,11 +221,11 @@ export function ProfileSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                   <Label htmlFor="twitterUrl">Twitter URL</Label>
-                  <Input id="twitterUrl" placeholder="https://twitter.com/username" value={settings.twitterUrl} onChange={e => setSettings(s => ({ ...s, twitterUrl: e.target.value }))} />
+                  <Input id="twitterUrl" placeholder="https://twitter.com/username" value={settings.twitterUrl} onChange={(e) => setSettings(s => ({ ...s, twitterUrl: e.target.value }))} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="twitchUrl">Twitch URL</Label>
-                  <Input id="twitchUrl" placeholder="https://twitch.tv/username" value={settings.twitchUrl} onChange={e => setSettings(s => ({ ...s, twitchUrl: e.target.value }))} />
+                  <Input id="twitchUrl" placeholder="https://twitch.tv/username" value={settings.twitchUrl} onChange={(e) => setSettings(s => ({ ...s, twitchUrl: e.target.value }))} />
               </div>
             </div>
           </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
@@ -10,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
 import type { ChessSquare, ChessMove } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -212,7 +213,6 @@ function AnalysisPageComponent() {
                   <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                          <Avatar>
-                              <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="avatar abstract" />
                               <AvatarFallback>{pgnHeaders['White']?.charAt(0) || 'W'}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -230,7 +230,6 @@ function AnalysisPageComponent() {
                               <p className="text-sm text-muted-foreground">ELO: {pgnHeaders['BlackElo'] || 'N/A'}</p>
                           </div>
                           <Avatar>
-                              <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="avatar robot" />
                               <AvatarFallback>{pgnHeaders['Black']?.charAt(0) || 'B'}</AvatarFallback>
                           </Avatar>
                       </div>
@@ -441,5 +440,3 @@ export default function AnalysisPageSuspenseWrapper() {
     </Suspense>
   );
 }
-
-    

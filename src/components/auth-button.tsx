@@ -79,7 +79,7 @@ export function AuthButton() {
         <PopoverTrigger asChild>
           <button className="flex items-center gap-3 text-left w-full hover:bg-sidebar-accent p-1 rounded-md transition-colors">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={avatar || "https://placehold.co/40x40.png"} alt={username} data-ai-hint="avatar abstract" />
+              <AvatarImage src={avatar || undefined} alt={username} />
               <AvatarFallback>
                 {username.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -94,7 +94,7 @@ export function AuthButton() {
           <div className="flex flex-col space-y-2">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={avatar || "https://placehold.co/40x40.png"} alt={username} data-ai-hint="avatar abstract" />
+                <AvatarImage src={avatar || undefined} alt={username} />
                 <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>

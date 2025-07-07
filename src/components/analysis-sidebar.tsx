@@ -42,7 +42,7 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={avatarSrc || (isOpponent ? 'https://placehold.co/40x40.png' : 'https://placehold.co/40x40.png')} data-ai-hint={isOpponent ? "avatar robot" : "avatar abstract"} />
+            <AvatarImage src={avatarSrc || undefined} alt={name} />
             <AvatarFallback>{name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col min-w-0">
@@ -222,5 +222,3 @@ export function AnalysisSidebar({
     </aside>
   )
 }
-
-    
