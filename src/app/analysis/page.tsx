@@ -39,8 +39,10 @@ const renderEvalBar = (evaluation: number | undefined) => {
     if (evaluation === undefined) {
         return <div className="bg-white/50" style={{ height: '50%' }} />;
     }
-    const cappedEval = Math.max(-1000, Math.min(1000, evaluation));
-    const normalizedEval = (cappedEval + 1000) / 2000;
+    // Cap evaluation at +/- 400 centipawns for visualization
+    const cappedEval = Math.max(-400, Math.min(400, evaluation));
+    // Normalize to a 0-1 range
+    const normalizedEval = (cappedEval + 400) / 800;
     const heightPercentage = normalizedEval * 100;
 
     return <div className="bg-white transition-all duration-300 rounded-full" style={{ height: `${heightPercentage}%` }} />;
@@ -152,27 +154,34 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
             </div>
             <span>{pgnHeaders.Result}</span>
         </div>
-        <div className="w-full max-w-[80vh] flex items-center gap-2">
-          <div className="h-full w-3 bg-black/20 rounded-full flex flex-col-reverse relative overflow-hidden">
-             {renderEvalBar(currentMoveData?.evaluation)}
-          </div>
-          <div className="w-full aspect-square">
-            <ChessBoard
-                board={boardState}
-                onSquareClick={() => {}}
-                onSquareRightClick={() => {}}
-                selectedSquare={null}
-                possibleMoves={[]}
-                lastMove={lastMove ? { from: lastMove.from, to: lastMove.to, san: lastMove.san } : null}
-                boardTheme="classic"
-                showPossibleMoves={false}
-                showLastMoveHighlight={true}
-                boardOrientation="w"
-                pieceSet="cburnett"
-                handlePieceDrop={() => {}}
-                showCoordinates='outside'
-            />
-          </div>
+        <div className="w-full max-w-[80vh] flex items-stretch justify-center gap-4">
+            <div className="flex-shrink-0 flex items-center gap-1.5 py-10">
+                <div className="h-full w-3 bg-black/20 rounded-full flex flex-col-reverse relative overflow-hidden">
+                    {renderEvalBar(currentMoveData?.evaluation)}
+                </div>
+                <div className="h-full relative flex flex-col justify-between text-xs text-stone-400 font-mono">
+                    <span>+4</span>
+                    <span className="absolute top-1/2 left-0 -translate-y-1/2">0</span>
+                    <span>-4</span>
+                </div>
+            </div>
+            <div className="w-full aspect-square">
+                <ChessBoard
+                    board={boardState}
+                    onSquareClick={() => {}}
+                    onSquareRightClick={() => {}}
+                    selectedSquare={null}
+                    possibleMoves={[]}
+                    lastMove={lastMove ? { from: lastMove.from, to: lastMove.to, san: lastMove.san } : null}
+                    boardTheme="classic"
+                    showPossibleMoves={false}
+                    showLastMoveHighlight={true}
+                    boardOrientation="w"
+                    pieceSet="cburnett"
+                    handlePieceDrop={() => {}}
+                    showCoordinates='outside'
+                />
+            </div>
         </div>
          <div className="w-full max-w-2xl flex items-center justify-between absolute bottom-4 text-sm px-2">
             <div className="flex items-center gap-2">
@@ -260,8 +269,8 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                         <CardTitle className="text-base font-semibold">Key Moments</CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 space-y-2">
-                        {analysis.keyMoments.map((moment) => (
-                           <div key={moment.moveNumber} onClick={() => updateBoardAtMove(moment.moveNumber - 1)} className="text-sm p-2 rounded-md cursor-pointer hover:bg-stone-700/50">
+                        {analysis.keyMoments.map((moment, index) => (
+                           <div key={index} onClick={() => updateBoardAtMove(moment.moveNumber - 1)} className="text-sm p-2 rounded-md cursor-pointer hover:bg-stone-700/50">
                                <p className="font-semibold">{moment.moveNumber}. {moment.san} ({moment.player})</p>
                                <p className="text-stone-400">{moment.description}</p>
                            </div>
