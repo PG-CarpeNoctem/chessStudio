@@ -10,7 +10,7 @@ import { analyzeGame, AnalyzeGameOutput } from '@/ai/flows/analyze-game';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, BrainCircuit, Gem, ThumbsUp, Check, BookOpen, AlertCircle, AlertTriangle, HelpCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Star, Info, MessageSquareQuote, Target, Zap, RotateCw, Settings, Share2, ArrowLeft, Bot, Users, XCircle, Trophy } from 'lucide-react';
 import { ChessBoard } from '@/components/chess-board';
-import type { ChessSquare } from '@/lib/types';
+import type { ChessSquare, BoardTheme, PieceSet } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -41,10 +41,10 @@ const renderEvalBar = (evaluation: number | undefined) => {
     if (evaluation === undefined) {
         return <div className="bg-white/50" style={{ height: '50%' }} />;
     }
-    // Cap evaluation at +/- 1000 centipawns for visualization
-    const cappedEval = Math.max(-1000, Math.min(1000, evaluation));
+    // Cap evaluation at +/- 400 centipawns for visualization
+    const cappedEval = Math.max(-400, Math.min(400, evaluation));
     // Normalize to a 0-1 range
-    const normalizedEval = (cappedEval + 1000) / 2000;
+    const normalizedEval = (cappedEval + 400) / 800;
     const heightPercentage = normalizedEval * 100;
 
     return <div className="bg-white transition-all duration-300 rounded-full" style={{ height: `${heightPercentage}%` }} />;
@@ -265,8 +265,22 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [pgnHeaders, setPgnHeaders] = useState<{[key: string]: string}>({});
   const [showEstimatedElo, setShowEstimatedElo] = useState(true);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
+  const [pieceSet, setPieceSet] = useState<PieceSet>('cburnett');
 
   useEffect(() => {
+    const getSetting = <T,>(key: string, defaultValue: T): T => {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+        try {
+            return saved ? JSON.parse(saved) : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    };
+
+    setBoardTheme(getSetting<BoardTheme>('chess:boardTheme', 'classic'));
+    setPieceSet(getSetting<PieceSet>('chess:pieceSet', 'cburnett'));
+
     const showElo = localStorage.getItem('chess:showEstimatedElo');
     setShowEstimatedElo(showElo ? JSON.parse(showElo) : true);
   }, []);
@@ -354,9 +368,9 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                     {renderEvalBar(currentMoveData?.evaluation)}
                 </div>
                 <div className="h-full relative flex flex-col justify-between text-xs text-stone-400 font-mono">
-                    <span>+10</span>
+                    <span>+4</span>
                     <span className="absolute top-1/2 left-0 -translate-y-1/2">0</span>
-                    <span>-10</span>
+                    <span>-4</span>
                 </div>
             </div>
             <div className="w-full aspect-square">
@@ -367,11 +381,11 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                     selectedSquare={null}
                     possibleMoves={[]}
                     lastMove={lastMove ? { from: lastMove.from, to: lastMove.to, san: lastMove.san } : null}
-                    boardTheme="classic"
+                    boardTheme={boardTheme}
                     showPossibleMoves={false}
                     showLastMoveHighlight={true}
                     boardOrientation="w"
-                    pieceSet="cburnett"
+                    pieceSet={pieceSet}
                     handlePieceDrop={() => {}}
                     showCoordinates='outside'
                 />
@@ -433,14 +447,14 @@ function AnalysisReportComponent({ analysis }: { analysis: AnalyzeGameOutput }) 
                     <CardContent className="p-3">
                        <Table>
                             <TableBody>
-                                {classificationOrder.map(key => {
+                                {classificationOrder.map((key, i) => {
                                     const style = classificationStyles[key];
                                     if(!style) return null;
                                     const whiteCount = analysis.moveCounts.white[key.toLowerCase().replace(' ', '') as keyof typeof analysis.moveCounts.white] || 0;
                                     const blackCount = analysis.moveCounts.black[key.toLowerCase().replace(' ', '') as keyof typeof analysis.moveCounts.black] || 0;
                                     if(whiteCount === 0 && blackCount === 0) return null;
                                     return (
-                                        <TableRow key={key} className="border-b-stone-700 hover:bg-stone-700/50">
+                                        <TableRow key={i} className="border-b-stone-700 hover:bg-stone-700/50">
                                             <TableCell className="font-medium p-1.5 w-1/3">{whiteCount}</TableCell>
                                             <TableCell className="text-center p-1.5">
                                                 <div className="flex items-center justify-center gap-2">
