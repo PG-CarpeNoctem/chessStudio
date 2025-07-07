@@ -11,24 +11,31 @@ import { Separator } from './ui/separator';
 import Link from 'next/link';
 
 export function AuthButton() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | undefined>(undefined);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
-  const updateUserState = () => {
-    const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
-    setIsLoggedIn(loggedInStatus);
-    if (loggedInStatus) {
-        setUsername(localStorage.getItem('username') || 'PlayerOne');
-        setAvatar(localStorage.getItem('chess:avatar'));
-    } else {
-        setUsername(null);
-        setAvatar(null);
-    }
-  };
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!isMounted) return;
+
+    const updateUserState = () => {
+      const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
+      setIsLoggedIn(loggedInStatus);
+      if (loggedInStatus) {
+          setUsername(localStorage.getItem('username') || 'PlayerOne');
+          setAvatar(localStorage.getItem('chess:avatar'));
+      } else {
+          setUsername(null);
+          setAvatar(null);
+      }
+    };
+
     updateUserState();
 
     const handleStorageChange = (e: StorageEvent) => {
@@ -39,21 +46,24 @@ export function AuthButton() {
     window.addEventListener('storage', handleStorageChange);
     
     // Listen for changes from the settings page in the same tab
-    window.addEventListener('profileChanged', updateUserState);
+    const handleProfileChange = () => updateUserState();
+    window.addEventListener('profileChanged', handleProfileChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('profileChanged', updateUserState);
+      window.removeEventListener('profileChanged', handleProfileChange);
     }
 
-  }, []);
+  }, [isMounted]);
   
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('username');
     localStorage.removeItem('chess:avatar');
     localStorage.removeItem('email');
-    updateUserState();
+    setIsLoggedIn(false);
+    setUsername(null);
+    setAvatar(null);
     router.replace('/login');
   };
 
@@ -61,7 +71,7 @@ export function AuthButton() {
     router.push('/login');
   }
 
-  if (isLoggedIn === undefined) {
+  if (!isMounted) {
     return (
       <div className="flex items-center gap-3">
         <Skeleton className="h-8 w-8 rounded-full" />

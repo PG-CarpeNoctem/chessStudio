@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '../ui/skeleton';
 
 // --- Helper Functions ---
 const getSetting = (key: string, defaultValue: string): string => {
@@ -63,24 +64,31 @@ export function ProfileSettings() {
   });
   const [initialState, setInitialState] = useState(settings);
   const [userEmail, setUserEmail] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    const loadedState = {
-        username: getSetting('username', 'Player'),
-        firstName: getSetting('chess:firstName', ''),
-        lastName: getSetting('chess:lastName', ''),
-        bio: getSetting('chess:bio', ''),
-        avatar: getSetting('chess:avatar', ''),
-        country: getSetting('chess:country', ''),
-        pronouns: getSetting('chess:pronouns', ''),
-        url: getSetting('chess:url', ''),
-        twitterUrl: getSetting('chess:twitterUrl', ''),
-        twitchUrl: getSetting('chess:twitchUrl', ''),
-    };
-    setSettings(loadedState);
-    setInitialState(loadedState);
-    setUserEmail(getSetting('email', 'No email associated'));
+    setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      const loadedState = {
+          username: getSetting('username', 'Player'),
+          firstName: getSetting('chess:firstName', ''),
+          lastName: getSetting('chess:lastName', ''),
+          bio: getSetting('chess:bio', ''),
+          avatar: getSetting('chess:avatar', ''),
+          country: getSetting('chess:country', ''),
+          pronouns: getSetting('chess:pronouns', ''),
+          url: getSetting('chess:url', ''),
+          twitterUrl: getSetting('chess:twitterUrl', ''),
+          twitchUrl: getSetting('chess:twitchUrl', ''),
+      };
+      setSettings(loadedState);
+      setInitialState(loadedState);
+      setUserEmail(getSetting('email', 'No email associated'));
+    }
+  }, [isClient]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +129,30 @@ export function ProfileSettings() {
   }
 
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(initialState);
+
+  if (!isClient) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>This is how others will see you on the site.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-start gap-6">
+              <Skeleton className="h-24 w-24 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
 
   return (
     <Card>

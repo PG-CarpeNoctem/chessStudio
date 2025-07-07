@@ -86,6 +86,7 @@ export const useChessGame = () => {
   const [pendingMove, setPendingMove] = useState<({ from: ChessSquare, to: ChessSquare, promotion?: 'q' | 'r' | 'b' | 'n' } & { san: string }) | null>(null);
   const [promotionMove, setPromotionMove] = useState<{ from: ChessSquare; to: ChessSquare } | null>(null);
 
+  // Settings states with defaults
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('cyan');
   const [pieceSet, setPieceSet] = useState<PieceSet>('classic');
   const [showPossibleMoves, setShowPossibleMoves] = useState(true);
@@ -99,15 +100,18 @@ export const useChessGame = () => {
   const [enableSounds, setEnableSounds] = useState<boolean>(true);
   const [isMounted, setIsMounted] = useState(false);
 
-  const setTimeControl = useCallback((value: TimeControl) => {
-    _setTimeControl(value);
-    setJsonSetting('chess:timeControl', value);
-  }, []);
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  const setTimeControl = useCallback((value: TimeControl) => {
+    _setTimeControl(value);
+    if (typeof window !== 'undefined') {
+      setJsonSetting('chess:timeControl', value);
+    }
+  }, []);
+
+  // Load all settings from localStorage once the component is mounted
   useEffect(() => {
     if (!isMounted) return;
 
@@ -148,6 +152,12 @@ export const useChessGame = () => {
       captureSoundRef.current = new Audio('/sounds/capture.mp3');
       checkSoundRef.current = new Audio('/sounds/check.mp3');
       gameOverSoundRef.current = new Audio('/sounds/game-over.mp3');
+
+      // Preload sounds
+      moveSoundRef.current.load();
+      captureSoundRef.current.load();
+      checkSoundRef.current.load();
+      gameOverSoundRef.current.load();
     } else {
       // Clear refs if sounds are disabled
       moveSoundRef.current = null;
@@ -282,45 +292,49 @@ export const useChessGame = () => {
   }, [playSound, boardOrientation]);
 
   const makeMove = useCallback((move: string | { from: ChessSquare, to: ChessSquare, promotion?: string }) => {
-    try {
-      setRedoStack([]); // Clear redo stack on new move
-      const g = gameRef.current;
-      const prevTurn = g.turn();
-      const isFirstMove = g.history().length === 0;
+    const g = gameRef.current;
+    
+    // Use a copy to test the move without altering the main game state yet
+    const gameCopy = new Chess(g.fen());
+    const result = gameCopy.move(move);
 
-      const result = g.move(move);
-      
-      if (result) {
-        if (result.flags.includes('c')) playSound('capture');
-        else playSound('move');
-        if (g.inCheck()) playSound('check');
-
-        if (timeControl.type === 'fischer' || timeControl.type === 'bronstein') {
-            setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + (timeControl.increment * 1000) }));
-        }
-
-        updateGameState();
-        setHint(null);
-        
-        // Timer logic on successful move
-        if (isFirstMove && timeControl.type !== 'unlimited' && !g.isGameOver()) {
-            setTimerOn(true);
-        }
-
-        if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
-        if (timeControl.type === 'delay' && !g.isGameOver()) {
-            setTimerOn(false); // Stop timer during delay
-            timerDelayRef.current = setTimeout(() => {
-                setTimerOn(true);
-            }, timeControl.increment * 1000);
-        }
-        return true;
-      }
-    } catch (e) {
-      console.error("Invalid move attempted: ", move, e);
+    if (result === null) {
+      console.error("Invalid move attempted: ", move);
+      // It's an illegal move, don't change the state.
+      // This can happen if AI suggests a bad move.
       return false;
     }
-    return false;
+
+    // If the move is valid, apply it to the main game instance
+    g.move(move);
+    setRedoStack([]); // Clear redo stack on new move
+    const prevTurn = g.turn() === 'w' ? 'b' : 'w'; // Turn has already changed
+    const isFirstMove = g.history().length === 1;
+    
+    if (result.flags.includes('c')) playSound('capture');
+    else playSound('move');
+    if (g.inCheck()) playSound('check');
+
+    if (timeControl.type === 'fischer' || timeControl.type === 'bronstein') {
+        setTime(prev => ({ ...prev, [prevTurn]: prev[prevTurn] + (timeControl.increment * 1000) }));
+    }
+
+    updateGameState();
+    setHint(null);
+    
+    // Timer logic on successful move
+    if (isFirstMove && timeControl.type !== 'unlimited' && !g.isGameOver()) {
+        setTimerOn(true);
+    }
+
+    if (timerDelayRef.current) clearTimeout(timerDelayRef.current);
+    if (timeControl.type === 'delay' && !g.isGameOver()) {
+        setTimerOn(false); // Stop timer during delay
+        timerDelayRef.current = setTimeout(() => {
+            setTimerOn(true);
+        }, timeControl.increment * 1000);
+    }
+    return true;
   }, [timeControl, updateGameState, playSound]);
 
   const resetMoveSelection = () => {
@@ -408,7 +422,7 @@ export const useChessGame = () => {
 
   const resetGame = useCallback(() => {
     const g = new Chess();
-    const username = typeof window !== 'undefined' ? localStorage.getItem('username') || 'Player' : 'Player';
+    const username = (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || 'Player';
     g.setHeader('White', username);
     g.setHeader('Black', gameMode === 'ai' ? 'AI Opponent' : 'Player 2');
     g.setHeader('Date', new Date().toISOString().split('T')[0]);
@@ -446,7 +460,10 @@ export const useChessGame = () => {
           
           const { suggestedMove } = await Promise.race([aiPromise, timeoutPromise]);
           
-          makeMove(suggestedMove);
+          const moveSuccessful = makeMove(suggestedMove);
+          if (!moveSuccessful) {
+            throw new Error(`AI suggested an invalid move: ${suggestedMove}`);
+          }
           
           if (premove) {
               const validMoves = gameRef.current.moves({verbose: true});
@@ -478,6 +495,7 @@ export const useChessGame = () => {
     if (gameOver || promotionMove) return;
 
     const g = gameRef.current;
+    const pieceOnSquare = g.get(square);
     
     // It is NOT the player's turn: Handle premoves
     if (gameMode === 'ai' && g.turn() !== boardOrientation) {
@@ -491,8 +509,7 @@ export const useChessGame = () => {
           resetMoveSelection();
         } else {
           // No piece selected, so this click selects a piece for premoving
-          const piece = g.get(square);
-          if (piece && piece.color === boardOrientation) {
+          if (pieceOnSquare && pieceOnSquare.color === boardOrientation) {
             setSelectedSquare(square);
           }
         }
@@ -500,40 +517,28 @@ export const useChessGame = () => {
       return;
     }
     
-    // It IS the player's turn: Handle regular moves
-    if (g.turn() !== boardOrientation && gameMode === 'two-player' && boardOrientation === 'b') {
-        // Player is black and it is black's turn
-    } else if (g.turn() !== boardOrientation) {
-        // Not the player's turn in AI mode
-        return;
+    // It IS the player's turn (or two-player mode)
+    if (g.turn() !== boardOrientation && gameMode === 'ai') {
+        return; // Not the player's turn in AI mode
     }
 
-    const pieceOnSquare = g.get(square);
-
     if (selectedSquare) {
-      // A piece is already selected
       if (square === selectedSquare) {
-        // Clicked the same square again, so deselect
         resetMoveSelection();
         return;
       }
       
       const isPossible = possibleMoves.find(m => m.to === square);
       if (isPossible) {
-        // Clicked on a valid destination square
         attemptMove({ from: selectedSquare, to: square });
       } else if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
-        // Clicked on another of their own pieces, so switch selection
         setSelectedSquare(square);
         setPossibleMoves(g.moves({ square, verbose: true }));
       } else {
-        // Clicked on an invalid square
         resetMoveSelection();
       }
     } else {
-      // No piece is selected yet
       if (pieceOnSquare && pieceOnSquare.color === g.turn()) {
-        // Select the piece
         setSelectedSquare(square);
         setPossibleMoves(g.moves({ square, verbose: true }));
       }
@@ -603,16 +608,20 @@ export const useChessGame = () => {
   }, [redoStack, updateGameState]);
   
   useEffect(() => {
-    resetGame();
-  }, [gameMode, timeControl]); 
+    if (isMounted) {
+      resetGame();
+    }
+  }, [isMounted, gameMode, timeControl]); 
   
   useEffect(() => {
-    updateGameState();
+    if(isMounted) {
+        updateGameState();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isMounted]);
 
   useEffect(() => {
-    if (!timerOn || gameOver || timeControl.type === 'unlimited') {
+    if (!timerOn || gameOver || timeControl.type === 'unlimited' || !isMounted) {
       return;
     }
 
@@ -631,7 +640,7 @@ export const useChessGame = () => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [timerOn, gameOver, timeControl.type, updateGameState]);
+  }, [timerOn, gameOver, timeControl.type, updateGameState, isMounted]);
 
 
   const getHint = useCallback(async () => {
@@ -693,5 +702,6 @@ export const useChessGame = () => {
     customColors, showCoordinates, handlePieceDrop, 
     pendingMove, confirmMove, cancelMove,
     promotionMove, cancelPromotion, handlePromotion,
+    isMounted, // Expose isMounted for conditional rendering in parent
   };
 };

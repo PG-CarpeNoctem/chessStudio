@@ -112,6 +112,7 @@ function AnalysisPageComponent() {
 
     setIsLoading(true);
     setAnalysis(null);
+    setCurrentMoveIndex(-1);
 
     const progressInterval = setInterval(() => {
         setProgress(prev => (prev >= 95 ? prev : prev + 5));
@@ -132,15 +133,17 @@ function AnalysisPageComponent() {
       const result = await analyzeGame({ pgn: chess.pgn(), skillLevel: 'intermediate' });
       setAnalysis(result);
 
+      // Set board to the final position after analysis is complete
       const finalGame = new Chess();
       finalGame.loadPgn(result.pgn);
       updateBoardAtMove(finalGame.history().length - 1);
 
     } catch (e: any) {
-      const errorMessage = e.message?.includes('Invalid PGN') 
+      const errorMessage = e.message?.includes('PGN') 
           ? 'Invalid PGN provided. Please check the game data and try again.'
           : e.message || 'An unknown error occurred during analysis.';
       toast({ variant: 'destructive', title: 'Analysis Failed', description: errorMessage });
+      setAnalysis(null); // Clear any partial analysis
     } finally {
       clearInterval(progressInterval);
       setProgress(100);

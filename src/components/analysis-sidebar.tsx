@@ -22,13 +22,14 @@ import { Skeleton } from './ui/skeleton';
 
 type AnalysisSidebarProps = Pick<ReturnType<typeof useChessGame>, 
     'pgn' | 'history' | 'isAITurn' | 'getHint' | 'gameOver' | 
-    'capturedPieces' | 'materialAdvantage' | 'time'
+    'capturedPieces' | 'materialAdvantage' | 'time' | 'isMounted'
 > & {
   className?: string;
 };
 
 const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
-    if (ms === Infinity || historyLength === 0) return '∞';
+    if (historyLength === 0) return '10:00'; // Default display before game starts
+    if (ms === Infinity) return '∞';
     if (isGameOver && ms <= 0) return "00:00";
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const minutes = Math.floor(totalSeconds / 60);
@@ -36,7 +37,7 @@ const formatTime = (ms: number, isGameOver: boolean, historyLength: number) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: number }) => (
+const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], materialAdvantage = 0, time }: { name: string, avatarSrc: string | null, isOpponent?: boolean, capturedPieces?: ChessPiece[], materialAdvantage?: number, time: string }) => (
   <Card className="bg-sidebar-accent border-sidebar-border">
     <CardContent className="p-3">
       <div className="flex justify-between items-center gap-2">
@@ -71,15 +72,10 @@ const PlayerCard = ({ name, avatarSrc, isOpponent = false, capturedPieces = [], 
 
 export function AnalysisSidebar({ 
     pgn, history, isAITurn, getHint, gameOver, capturedPieces, 
-    materialAdvantage, time, className 
+    materialAdvantage, time, isMounted, className 
 }: AnalysisSidebarProps) {
   const [username, setUsername] = useState('Player');
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-      setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -93,14 +89,17 @@ export function AnalysisSidebar({
     }
     updateUserState();
     
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'username' || e.key === 'chess:avatar') {
+        updateUserState();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('profileChanged', updateUserState);
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'username' || e.key === 'chess:avatar') {
-            updateUserState();
-        }
-    });
 
     return () => {
+      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('profileChanged', updateUserState);
     };
   }, [isMounted]);
