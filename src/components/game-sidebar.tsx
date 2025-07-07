@@ -128,28 +128,28 @@ export function GameSidebar({
                     <CardContent className="flex flex-col gap-2 p-3 pt-0">
                         <div className="grid grid-cols-2 gap-2">
                              <Button onClick={resetGame} size="sm">
-                                <Play className="mr-2" />
+                                <Play />
                                 New Game
                             </Button>
                             <Button asChild variant="outline" size="sm">
                                 <Link href="/history">
-                                    <ScrollText className="mr-2" />
+                                    <ScrollText />
                                     Past Games
                                 </Link>
                             </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <Button onClick={undoMove} disabled={!canUndo} variant="outline" size="sm">
-                            <Undo2 className="mr-2" />
+                            <Undo2 />
                             Undo
                             </Button>
                             <Button onClick={redoMove} disabled={!canRedo} variant="outline" size="sm">
-                            <Redo2 className="mr-2" />
+                            <Redo2 />
                             Redo
                             </Button>
                         </div>
                         <Button onClick={flipBoard} variant="outline" size="sm">
-                            <RefreshCw className="mr-2" />
+                            <RefreshCw />
                             Flip Board
                         </Button>
                     </CardContent>
